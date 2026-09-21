@@ -5,10 +5,11 @@
 #   git clone https://github.com/LeeYudok/dotfiles.git && cd dotfiles && ./install.sh
 #
 # 동작 (섹션 번호 = 아래 주석 번호 = README 단계 표):
-#   0.   의존성 사전 검사 — 누락 시 홈 파일을 하나도 바꾸지 않고 종료
+#   0.   의존성 사전 검사 — 누락 시 홈 파일을 하나도 바꾸지 않고 종료. Git Bash/MSYS/Cygwin 은 지원하지 않음(WSL2 에서 실행)
 #   1.   zsh / starship / 플러그인 / jq 설치 (없을 때만; macOS 는 eza·bat·zoxide 포함)
 #   2.   starship.toml 배치 (~/.config/starship.toml)
 #   2.5. Nerd Fonts 설치 (JetBrainsMono, D2Coding; 마커 파일로 재설치 방지)
+#        WSL 에서는 건너뛰고 안내만 — 글리프는 Windows 쪽 터미널이 그리므로 폰트도 Windows 에 설치해야 한다
 #   3.   OS 에 맞는 zshrc 배치 (~/.zshrc). 머신별 alias/함수는 ~/.zshrc.local (미추적, 이 스크립트가 만들지 않음)
 #   4.   Claude Code statusline 스크립트 배치 (~/.claude/statusline-command.sh)
 #        + settings.json 의 statusLine 키만 merge (python3, 원자적 쓰기)
@@ -16,7 +17,7 @@
 #        Codex 를 쓰는 머신(codex 명령 또는 ~/.codex 존재)에서만. 없으면 건너뜀
 #   6.   기본 셸이 zsh 가 아니면 chsh 안내
 #
-# 런타임 의존성: curl, unzip, python3 (0 단계에서 검사). macOS 는 Homebrew 필수.
+# 런타임 의존성: curl, unzip, python3 (0 단계에서 검사). macOS 는 Homebrew 필수. Windows 는 WSL2 안에서 실행.
 #   jq 는 statusline 스크립트 런타임 전용 — 1 단계에서 brew/dnf/apt 로 자동 설치 (sudo 불가 시 경고만).
 # 멱등(idempotent): 재실행해도 안전하다. 배치 대상은 내용이 다를 때만 .bak 백업 후 덮어쓴다.
 #
@@ -36,6 +37,10 @@ die()  { printf '\033[1;31m[install] 오류:\033[0m %s\n' "$*" >&2; exit 1; }
 
 # ── 0. 의존성 사전 검사 (홈 파일 변경 전) ────────────────────
 # 여기서 실패하면 ~/.dotfiles-backup 을 포함해 아무것도 만들거나 바꾸지 않는다.
+case "$OS" in
+  MINGW*|MSYS*|CYGWIN*)
+    die "Git Bash/MSYS/Cygwin 은 지원하지 않음 (zsh·패키지 매니저 없음) — WSL2 를 설치(wsl --install)하고 그 안에서 실행 (홈 파일은 변경하지 않았음)" ;;
+esac
 missing=()
 for cmd in curl unzip python3; do command -v "$cmd" >/dev/null || missing+=("$cmd"); done
 if [ "$OS" = "Darwin" ]; then
@@ -55,6 +60,12 @@ fi
 if [ -f "$HOME/.codex/config.toml" ]; then
   python3 codex/status-line.py check || die "$HOME/.codex/config.toml 을 편집할 수 없음 — 수동으로 고친 뒤 다시 실행 (홈 파일은 변경하지 않았음)"
 fi
+
+# WSL 여부 — 커널 버전 문자열에 microsoft 가 들어 있다. DOTFILES_PROC_VERSION 은 시험용(다른 파일을 읽게 한다)
+is_wsl() {
+  local f="${DOTFILES_PROC_VERSION:-/proc/version}"
+  [ "$OS" != "Darwin" ] && [ -r "$f" ] && grep -qi microsoft "$f"
+}
 
 BACKUP_DIR="$HOME/.dotfiles-backup"
 mkdir -p "$BACKUP_DIR"
@@ -137,7 +148,6 @@ info "starship.toml 배치 완료"
 
 # ── 2.5. Nerd Fonts (JetBrainsMono, D2Coding) ──────────────
 if [ "$OS" = "Darwin" ]; then FONT_DIR="$HOME/Library/Fonts"; else FONT_DIR="$HOME/.local/share/fonts"; fi
-mkdir -p "$FONT_DIR"
 install_nerd_font() {
   local name="$1"
   local marker="$FONT_DIR/.nerd-font-${name}-installed"
@@ -158,14 +168,20 @@ install_nerd_font() {
   rm -rf "$tmp"
   [ "$ok" = 1 ] || info "경고: Nerd Font $name 다운로드/압축해제 실패 — 건너뜀 (네트워크·GitHub 릴리스 확인 후 재실행)"
 }
-for font in JetBrainsMono D2Coding; do
-  install_nerd_font "$font"
-done
-if [ "$OS" = "Darwin" ]; then
-  info "Nerd Font 설치 완료 (Font Book 자동 등록)"
+if is_wsl; then
+  # 글리프를 그리는 것은 Windows 쪽 터미널이다. WSL 안에 설치해도 효과가 없고, Windows 사용자 프로필은 $HOME 밖이라 자동 설치하지 않는다.
+  info "WSL 감지 — Nerd Font 설치 건너뜀. Windows 에 JetBrainsMono Nerd Font(또는 D2Coding Nerd Font)를 설치하고 터미널 프로필의 글꼴로 지정 (README 'Windows (WSL2)' 절)"
 else
-  command -v fc-cache >/dev/null && fc-cache -f "$FONT_DIR" >/dev/null
-  info "Nerd Font 설치 완료 (fc-cache 반영)"
+  mkdir -p "$FONT_DIR"
+  for font in JetBrainsMono D2Coding; do
+    install_nerd_font "$font"
+  done
+  if [ "$OS" = "Darwin" ]; then
+    info "Nerd Font 설치 완료 (Font Book 자동 등록)"
+  else
+    command -v fc-cache >/dev/null && fc-cache -f "$FONT_DIR" >/dev/null
+    info "Nerd Font 설치 완료 (fc-cache 반영)"
+  fi
 fi
 
 # ── 3. zshrc ───────────────────────────────────────────────

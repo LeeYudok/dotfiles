@@ -13,7 +13,7 @@
 
 이 넷을 `install.sh` 가 홈 디렉터리에 배치하고 `uninstall.sh` 가 설치 전 상태로 되돌린다. 프레임워크(oh-my-zsh 등)나 dotfile 매니저(stow, chezmoi)는 쓰지 않는다 — 셸 스크립트 두 개와 복사할 파일들이 전부다. 빌드·패키지·테스트 러너도 없다.
 
-대상 환경: macOS(Apple Silicon/Intel, Homebrew 필수), Linux(RHEL/Rocky 계열 `dnf`, Debian 계열 `apt-get`). 셸 스크립트는 bash, 배치되는 설정은 zsh.
+대상 환경: macOS(Apple Silicon/Intel, Homebrew 필수), Linux(RHEL/Rocky 계열 `dnf`, Debian 계열 `apt-get`), Windows 는 WSL2 안에서만(Linux 경로를 그대로 쓴다). Git Bash/MSYS/Cygwin 은 지원하지 않고 0 단계에서 중단한다. 셸 스크립트는 bash, 배치되는 설정은 zsh.
 
 ## 디렉터리와 파일별 역할
 
@@ -28,6 +28,7 @@
 | `claude/statusline-command.sh` | `~/.claude/statusline-command.sh` | statusLine JSON(stdin) → 한 줄 출력. `jq` 필요 |
 | `codex/status-line.py` | 배치 안 함 | `check`/`apply`/`restore`. `~/.codex/config.toml` 의 `[tui]` `status_line` 키만 줄 단위로 편집. `install.sh`·`uninstall.sh` 가 호출 |
 | `scripts/test-codex-status-line.sh` | — | 위 스크립트의 임시 `HOME` 왕복 시험 |
+| `scripts/test-windows-paths.sh` | — | Git Bash 거부(어느 OS 에서나)와 WSL 폰트 건너뛰기(Linux 에서만) 시험 |
 | `.gitignore` | — | 머신별·시크릿 파일명 차단 |
 
 홈에 생기는 부산물: `~/.dotfiles-backup/`(원본 기록과 설치 manifest), 배치 대상 옆의 `*.bak`(1세대), 폰트 디렉터리의 `.nerd-font-<name>-installed` 마커와 `.nerd-font-<name>-files.txt` manifest.
@@ -58,6 +59,7 @@
 - **덮어쓰기 전 백업**: 홈 파일 배치는 반드시 `deploy_file` 을 거친다(최초 원본을 `.orig`/`.absent` 로 기록 → 내용이 다르면 `.bak` → 복사). `cp` 직접 호출 금지. 최초 기록은 재실행 때 갱신하지 않는다.
 - **`settings.json` 은 키 단위 merge**: `statusLine` 외의 키를 읽거나 바꾸지 않는다. 쓰기는 같은 디렉터리의 임시 파일 + `os.replace` 로 원자적으로, 기존 mode 를 보존한다. 깨진 JSON 이면 손대지 않고 중단한다.
 - **`config.toml` 도 키 단위 merge**: `[tui]` 의 `status_line` 외에는 읽거나 바꾸지 않는다. TOML writer 가 없으므로 그 키의 줄만 교체하고 나머지는 바이트 그대로 둔다. `tomllib` 이 있으면 쓰기 전에 "`status_line` 외에는 같다"를 검증하고, 깨진 TOML·미지원 표기면 손대지 않고 중단한다. `install.sh` 와 `uninstall.sh` 가 같은 파서를 쓰도록 로직은 `codex/status-line.py` 한 곳에만 둔다. Codex 를 쓰지 않는 머신에서는 `~/.codex` 를 만들지 않는다.
+- **WSL 에서는 `$HOME` 밖을 건드리지 않는다**: WSL 은 `/proc/version` 의 `microsoft` 로 감지하고(`is_wsl`), Nerd Font 단계를 건너뛰고 안내만 한다. Windows 사용자 프로필에 폰트를 설치하는 식의 자동화는 넣지 않는다 — 역연산과 임시 `HOME` 왕복 시험이 성립하지 않는다. `DOTFILES_PROC_VERSION` 은 감지에 쓸 파일을 바꾸는 시험용 변수다.
 - **설치한 것만 지운다**: `--purge` 는 manifest(`brew-installed.txt`·`pkg-installed.txt`·`bin-installed.txt`)에 기록된 것만, 폰트는 파일 manifest 에 적힌 것만 제거한다. 원래 있던 것을 지우지 않는다.
 - **사용자 파일은 건드리지 않는다**: `~/.zshrc.local`, `~/.secrets.zsh`, `~/.claude/CLAUDE.md` 는 만들지도 지우지도 않는다.
 - **install 과 uninstall 은 한 쌍**: `install.sh` 가 홈에 뭔가를 새로 만들면 같은 변경에서 `uninstall.sh` 에 역연산을 넣는다.
@@ -72,7 +74,7 @@
 
 ```bash
 # 문법
-bash -n install.sh uninstall.sh claude/statusline-command.sh scripts/test-codex-status-line.sh
+bash -n install.sh uninstall.sh claude/statusline-command.sh scripts/test-codex-status-line.sh scripts/test-windows-paths.sh
 python3 -m py_compile codex/status-line.py
 zsh -n zsh/zshrc.macos zsh/zshrc.linux zsh/zshrc.local.example
 
@@ -86,6 +88,11 @@ echo '{"workspace":{"current_dir":"/tmp"},"model":{"display_name":"test"}}' | ba
 
 # Codex status line — 임시 HOME 에서 apply 2회 → restore 후 원본과 바이트 비교, 깨진 TOML·미지원 표기 거부
 scripts/test-codex-status-line.sh
+
+# Windows 경로 — Git Bash 거부는 어느 OS 에서나, WSL 흉내 왕복은 Linux 에서만 돈다 (macOS 에서는 컨테이너로)
+scripts/test-windows-paths.sh
+podman run --rm -v "$PWD":/src:ro docker.io/library/ubuntu:24.04 bash -c \
+  'apt-get update -qq && apt-get install -y -qq sudo curl unzip python3 ca-certificates >/dev/null && cp -r /src /work && cd /work && scripts/test-windows-paths.sh'
 
 # 공개 전 식별자 검사 — 결과가 없어야 한다
 git grep -nIE '([0-9]{1,3}\.){3}[0-9]{1,3}|/Users/[a-z0-9]+|/home/[a-z0-9]+|glpat-|ghp_|BEGIN [A-Z ]*PRIVATE KEY' -- ':!AGENTS.md'

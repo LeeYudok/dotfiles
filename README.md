@@ -1,6 +1,6 @@
 # dotfiles
 
-zsh + starship 셸 환경과 Claude Code statusline·Codex CLI status line 을 새 머신에 한 번에 맞추는 부트스트랩 저장소. macOS(Homebrew)와 Linux(dnf/apt) 를 같은 `install.sh` 로 설치하고, `uninstall.sh` 로 설치 전 상태까지 되돌린다.
+zsh + starship 셸 환경과 Claude Code statusline·Codex CLI status line 을 새 머신에 한 번에 맞추는 부트스트랩 저장소. macOS(Homebrew)와 Linux(dnf/apt), Windows(WSL2) 를 같은 `install.sh` 로 설치하고, `uninstall.sh` 로 설치 전 상태까지 되돌린다.
 
 어느 머신에나 그대로 적용할 수 있는 설정만 추적한다. 호스트 alias·내부 URL·API 키·개인 에이전트 지침처럼 머신이나 사람에 묶인 것은 저장소 밖(`~/.zshrc.local`, `~/.secrets.zsh`)에 둔다 — 자세한 경계는 [추적 범위](#추적-범위) 참고. 에이전트·기여자용 상세 규칙은 [AGENTS.md](AGENTS.md).
 
@@ -22,7 +22,8 @@ dotfiles/
 ├── codex/
 │   └── status-line.py         # Codex CLI status line — config.toml 의 [tui] status_line 키만 merge/복원
 └── scripts/
-    └── test-codex-status-line.sh  # codex/status-line.py 왕복 시험 (임시 HOME)
+    ├── test-codex-status-line.sh  # codex/status-line.py 왕복 시험 (임시 HOME)
+    └── test-windows-paths.sh      # Git Bash 거부·WSL 폰트 건너뛰기 시험 (임시 HOME)
 ```
 
 ## 설치
@@ -36,22 +37,45 @@ cd dotfiles && ./install.sh
 
 | # | 단계 | 내용 |
 |---|---|---|
-| 0 | 의존성 검사 | `curl`·`unzip`·`python3`, macOS 는 `brew`, Linux 는 `dnf`/`apt-get` 이 없으면 **홈 파일을 하나도 만들지 않고** 종료. `~/.claude/settings.json` 이 깨진 JSON 이거나 `~/.codex/config.toml` 을 편집할 수 없는 상태(깨진 TOML 등)여도 여기서 중단. |
+| 0 | 의존성 검사 | Git Bash/MSYS/Cygwin 이면 "WSL2 에서 실행" 안내와 함께 중단. `curl`·`unzip`·`python3`, macOS 는 `brew`, Linux 는 `dnf`/`apt-get` 이 없으면 **홈 파일을 하나도 만들지 않고** 종료. `~/.claude/settings.json` 이 깨진 JSON 이거나 `~/.codex/config.toml` 을 편집할 수 없는 상태(깨진 TOML 등)여도 여기서 중단. |
 | 1 | 패키지 설치 | macOS: brew 로 `starship eza bat zoxide fzf fd jq zsh-autosuggestions zsh-syntax-highlighting` (없을 때만). Linux: `zsh`(dnf/apt), `starship`(공식 스크립트, sudo 없으면 `~/.local/bin`), 자동완성 플러그인 2종(dnf 는 EPEL 활성화 후), `jq`(sudo 가능할 때만, 아니면 경고). |
 | 2 | starship.toml | `starship/starship.toml` → `~/.config/starship.toml` |
-| 2.5 | Nerd Fonts | GitHub 최신 릴리스에서 `JetBrainsMono`, `D2Coding` zip 을 받아 폰트 디렉터리(macOS `~/Library/Fonts`, Linux `~/.local/share/fonts` + `fc-cache`)에 설치. 폰트별 `.nerd-font-<name>-installed` 마커 파일로 재설치 방지. |
+| 2.5 | Nerd Fonts | GitHub 최신 릴리스에서 `JetBrainsMono`, `D2Coding` zip 을 받아 폰트 디렉터리(macOS `~/Library/Fonts`, Linux `~/.local/share/fonts` + `fc-cache`)에 설치. 폰트별 `.nerd-font-<name>-installed` 마커 파일로 재설치 방지. **WSL 에서는 건너뛰고 안내만** 한다 — [Windows (WSL2)](#windows-wsl2) 참고. |
 | 3 | zshrc | OS 에 맞는 `zsh/zshrc.*` → `~/.zshrc`. 머신별 alias/함수는 `~/.zshrc.local`(미추적) 에 두며 스크립트가 만들지 않는다 — 없으면 안내만. |
 | 4 | Claude statusline | `claude/statusline-command.sh` → `~/.claude/statusline-command.sh` (+x). 스크립트 런타임에 `jq` 필요 — 없으면 경고만. 이어서 **python3** 로 `~/.claude/settings.json` 의 `statusLine` 키만 merge (다른 키 불변, 파일 없으면 생성). 같은 디렉터리의 임시 파일에 쓰고 `os.replace` 로 교체하므로 중단돼도 원본이 깨지지 않고, 기존 파일 mode 를 보존한다. |
 | 5 | Codex status line | Codex 를 쓰는 머신(`codex` 명령 또는 `~/.codex` 존재)에서만. `codex/status-line.py apply` 로 `~/.codex/config.toml` 의 `[tui]` `status_line` 키만 merge (다른 테이블·키·주석 불변, 파일 없으면 생성). 원자적 쓰기와 mode 보존은 4 단계와 같다. |
 | 6 | 기본 셸 | `$SHELL` 이 zsh 가 아니면 `chsh -s <zsh 경로>` 안내만 (자동 변경 안 함). |
 
-런타임 의존성: `curl`, `unzip`, `python3`(0 단계에서 검사). macOS 는 Homebrew 필수. `jq` 는 statusline 스크립트 런타임 전용이라 1 단계에서 자동 설치한다(Linux 는 sudo 가능할 때만).
+런타임 의존성: `curl`, `unzip`, `python3`(0 단계에서 검사). macOS 는 Homebrew 필수. Windows 는 WSL2 안에서 실행한다. `jq` 는 statusline 스크립트 런타임 전용이라 1 단계에서 자동 설치한다(Linux 는 sudo 가능할 때만).
 
 멱등(idempotent): 재실행해도 안전하다. 배치 대상 파일(`starship.toml`·`.zshrc`·`statusline-command.sh`)은 기존 파일과 내용이 다를 때만 `.bak` 백업 후 덮어쓴다 — `.bak` 은 1세대만 유지되므로 두 번 연속 다른 내용을 배치하면 첫 백업은 사라진다.
 
 최초 실행 시 덮어쓸 파일의 원본과 설치 기록을 `~/.dotfiles-backup/` 에 남긴다(`<name>.orig` / `<name>.absent`, `brew-installed.txt`·`pkg-installed.txt`·`bin-installed.txt`, `settings.json.orig`, `codex-config.toml.orig`). 재실행해도 이 기록은 갱신하지 않으므로 몇 번을 돌려도 "설치 전 원본"이 보존된다. Nerd Font 는 설치한 파일명을 `.nerd-font-<name>-files.txt` manifest 로 남긴다.
 
 `~/.claude/settings.json` 전체는 이 저장소에 두지 않는다 — permissions/hooks/model 등 머신별·보안 민감 설정 포함. statusline 스크립트와 해당 키 merge 만 관리.
+
+## Windows (WSL2)
+
+Windows 에서는 **WSL2 안에서** 설치한다. Git Bash(Git for Windows)·MSYS2·Cygwin 은 지원하지 않는다 — zsh 와 패키지 매니저가 없어 zshrc·플러그인·`--purge` 역연산이 성립하지 않는다. 그 환경에서 `install.sh` 를 돌리면 0 단계에서 안내와 함께 중단하고 홈은 건드리지 않는다.
+
+```powershell
+wsl --install            # PowerShell(관리자). 기본 배포판 Ubuntu 설치 후 재부팅
+```
+
+```bash
+# WSL 셸 안에서
+sudo apt-get update && sudo apt-get install -y git curl unzip python3
+git clone https://github.com/LeeYudok/dotfiles.git
+cd dotfiles && ./install.sh
+chsh -s "$(command -v zsh)"
+```
+
+`install.sh` 는 커널 버전 문자열(`/proc/version`)의 `microsoft` 로 WSL 을 감지해 **2.5 단계(Nerd Fonts)를 건너뛴다.** 글리프를 그리는 것은 Windows 쪽 터미널이라 WSL 안에 폰트를 설치해도 효과가 없기 때문이다. 폰트는 Windows 에 직접 설치한다.
+
+1. [Nerd Fonts 릴리스](https://github.com/ryanoasis/nerd-fonts/releases/latest)에서 `JetBrainsMono.zip`(한글 글리프가 필요하면 `D2Coding.zip`)을 받아 압축을 풀고, `.ttf` 를 선택해 우클릭 → 설치.
+2. Windows Terminal → 설정 → 해당 WSL 프로필 → 모양 → 글꼴에서 `JetBrainsMono Nerd Font` 를 지정. VS Code 통합 터미널은 `terminal.integrated.fontFamily` 에 같은 이름을 넣는다.
+
+Windows 사용자 프로필은 WSL 의 `$HOME` 밖이라 스크립트가 자동으로 설치하지 않는다(되돌리기와 임시 `HOME` 시험이 성립하지 않는다). 나머지 단계(zshrc·starship·Claude statusline·Codex status line)는 일반 Linux 와 같고, Claude Code·Codex 도 WSL 안에 설치해 쓴다. `uninstall.sh` 는 WSL 에서도 그대로 동작한다 — 폰트는 마커·manifest 가 없으므로 건드릴 것이 없다.
 
 ## 되돌리기 (uninstall.sh)
 
