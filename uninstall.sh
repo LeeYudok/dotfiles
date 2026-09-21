@@ -2,7 +2,7 @@
 # dotfiles uninstall — install.sh 가 적용한 것을 되돌려 설치 전 zsh 상태로 복원
 #
 # 사용법:
-#   ./uninstall.sh            # 배치 파일 복원/제거 + statusLine 키 복원 + Nerd Font 제거
+#   ./uninstall.sh            # 배치 파일 복원/제거 + statusLine·Codex status_line 키 복원 + Nerd Font 제거
 #   ./uninstall.sh --purge    # 위에 더해 install.sh 가 새로 설치한 패키지/바이너리까지 제거
 #   ./uninstall.sh --keep-backup   # ~/.dotfiles-backup 을 남겨둠 (기본은 복원 후 삭제)
 #
@@ -111,7 +111,11 @@ else:
     atomic_write_json(p, d)
 PYEOF
 
-# ── 3. Nerd Fonts 제거 (manifest 에 기록된 파일만) ───────────
+# ── 3. Codex config.toml 의 [tui] status_line 키만 복원 (다른 키 불변, 원자적 쓰기) ──
+# install.sh 가 Codex 단계를 건너뛴 머신(기록 없음)에서는 아무것도 하지 않는다
+python3 codex/status-line.py restore
+
+# ── 4. Nerd Fonts 제거 (manifest 에 기록된 파일만) ───────────
 if [ "$OS" = "Darwin" ]; then FONT_DIR="$HOME/Library/Fonts"; else FONT_DIR="$HOME/.local/share/fonts"; fi
 for name in JetBrainsMono D2Coding; do
   manifest="$FONT_DIR/.nerd-font-${name}-files.txt"
@@ -130,7 +134,7 @@ for name in JetBrainsMono D2Coding; do
 done
 if [ "$OS" != "Darwin" ] && command -v fc-cache >/dev/null; then fc-cache -f "$FONT_DIR" >/dev/null || true; fi
 
-# ── 4. --purge: install.sh 가 새로 설치한 패키지/바이너리 제거 ─
+# ── 5. --purge: install.sh 가 새로 설치한 패키지/바이너리 제거 ─
 if [ "$PURGE" = 1 ]; then
   if [ "$OS" = "Darwin" ] && [ -s "$BACKUP_DIR/brew-installed.txt" ]; then
     while IFS= read -r pkg; do
@@ -156,13 +160,14 @@ else
   info "패키지(starship/eza/bat/zoxide/fzf/fd/플러그인)는 유지 — 제거하려면 --purge"
 fi
 
-# ── 5. 백업 디렉터리 정리 ──────────────────────────────────
+# ── 6. 백업 디렉터리 정리 ──────────────────────────────────
 if [ "$KEEP_BACKUP" = 1 ]; then
   info "$BACKUP_DIR 유지 (--keep-backup)"
 else
   rm -rf "$BACKUP_DIR"
 fi
 rmdir "$HOME/.claude" 2>/dev/null || true   # 비어 있을 때만 제거
+rmdir "$HOME/.codex" 2>/dev/null || true
 rmdir "$HOME/.config" 2>/dev/null || true
 rmdir "$FONT_DIR" 2>/dev/null || true
 
