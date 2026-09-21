@@ -12,7 +12,9 @@
 #   3.   OS 에 맞는 zshrc 배치 (~/.zshrc). 머신별 alias/함수는 ~/.zshrc.local (미추적, 이 스크립트가 만들지 않음)
 #   4.   Claude Code statusline 스크립트 배치 (~/.claude/statusline-command.sh)
 #        + settings.json 의 statusLine 키만 merge (python3, 원자적 쓰기)
-#   5.   기본 셸이 zsh 가 아니면 chsh 안내
+#   5.   Codex CLI status line — ~/.codex/config.toml 의 [tui] status_line 키만 merge (codex/status-line.py)
+#        Codex 를 쓰는 머신(codex 명령 또는 ~/.codex 존재)에서만. 없으면 건너뜀
+#   6.   기본 셸이 zsh 가 아니면 chsh 안내
 #
 # 런타임 의존성: curl, unzip, python3 (0 단계에서 검사). macOS 는 Homebrew 필수.
 #   jq 는 statusline 스크립트 런타임 전용 — 1 단계에서 brew/dnf/apt 로 자동 설치 (sudo 불가 시 경고만).
@@ -23,6 +25,7 @@
 #   - <name>.absent   : 원래 그 파일이 없었다는 표시
 #   - brew-installed.txt / pkg-installed.txt / bin-installed.txt : 이 스크립트가 새로 설치한 것만 기록
 #   - settings.json.orig : settings.json 설치 전 전체 내용 (없었으면 settings.json.absent)
+#   - codex-config.toml.orig : ~/.codex/config.toml 설치 전 전체 내용 (없었으면 codex-config.toml.absent)
 
 set -euo pipefail
 cd "$(dirname "$0")"
@@ -47,6 +50,10 @@ fi
 if [ -f "$HOME/.claude/settings.json" ]; then
   python3 -c 'import json,sys; json.load(open(sys.argv[1]))' "$HOME/.claude/settings.json" 2>/dev/null \
     || die "$HOME/.claude/settings.json 이 올바른 JSON 이 아님 — 수동으로 고친 뒤 다시 실행 (홈 파일은 변경하지 않았음)"
+fi
+# ~/.codex/config.toml 이 깨진 TOML 이거나 [tui] 표기가 아니면 5 단계에서 손댈 수 없으므로 시작 전에 막는다
+if [ -f "$HOME/.codex/config.toml" ]; then
+  python3 codex/status-line.py check || die "$HOME/.codex/config.toml 을 편집할 수 없음 — 수동으로 고친 뒤 다시 실행 (홈 파일은 변경하지 않았음)"
 fi
 
 BACKUP_DIR="$HOME/.dotfiles-backup"
@@ -223,7 +230,14 @@ else:
 PYEOF
 info "Claude statusline 배치 완료"
 
-# ── 5. 기본 셸 ─────────────────────────────────────────────
+# ── 5. Codex CLI status line ───────────────────────────────
+# Codex 는 외부 명령 status line 이 없어 스크립트 대신 config.toml 의 [tui] status_line 키만 merge (다른 키는 건드리지 않음)
+if command -v codex >/dev/null || [ -d "$HOME/.codex" ]; then
+  python3 codex/status-line.py apply
+  info "Codex status line 배치 완료"
+fi
+
+# ── 6. 기본 셸 ─────────────────────────────────────────────
 ZSH_PATH="$(command -v zsh)"
 if [ "${SHELL:-}" != "$ZSH_PATH" ]; then
   info "기본 셸이 zsh 가 아님 → 변경하려면: chsh -s $ZSH_PATH"

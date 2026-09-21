@@ -4,13 +4,14 @@
 
 ## 프로젝트 개요
 
-새 머신에 셸 환경을 한 번에 맞추는 개인 dotfiles 부트스트랩이다. 관리 대상은 세 가지뿐이다.
+새 머신에 셸 환경을 한 번에 맞추는 개인 dotfiles 부트스트랩이다. 관리 대상은 네 가지뿐이다.
 
 1. **zsh 설정** — macOS 용(`zsh/zshrc.macos`)과 Linux 서버용(`zsh/zshrc.linux`). 같은 섹션 순서를 따르고, 외부 도구는 설치돼 있을 때만 활성화한다.
 2. **starship 프롬프트** — `starship/starship.toml`. Catppuccin Mocha 팔레트, 2줄 프롬프트, Nerd Font 글리프. OS 공통.
 3. **Claude Code statusline** — `claude/statusline-command.sh` 와, `~/.claude/settings.json` 의 `statusLine` 키 하나.
+4. **Codex CLI status line** — `~/.codex/config.toml` 의 `[tui]` `status_line` 키 하나. Codex 는 외부 명령 status line 이 없어 배치할 스크립트가 없고, `codex/status-line.py` 가 그 키만 merge/복원한다.
 
-이 셋을 `install.sh` 가 홈 디렉터리에 배치하고 `uninstall.sh` 가 설치 전 상태로 되돌린다. 프레임워크(oh-my-zsh 등)나 dotfile 매니저(stow, chezmoi)는 쓰지 않는다 — 셸 스크립트 두 개와 복사할 파일들이 전부다. 빌드·패키지·테스트 러너도 없다.
+이 넷을 `install.sh` 가 홈 디렉터리에 배치하고 `uninstall.sh` 가 설치 전 상태로 되돌린다. 프레임워크(oh-my-zsh 등)나 dotfile 매니저(stow, chezmoi)는 쓰지 않는다 — 셸 스크립트 두 개와 복사할 파일들이 전부다. 빌드·패키지·테스트 러너도 없다.
 
 대상 환경: macOS(Apple Silicon/Intel, Homebrew 필수), Linux(RHEL/Rocky 계열 `dnf`, Debian 계열 `apt-get`). 셸 스크립트는 bash, 배치되는 설정은 zsh.
 
@@ -18,13 +19,15 @@
 
 | 경로 | 배치 위치 | 역할 |
 |---|---|---|
-| `install.sh` | — | 부트스트랩. 의존성 검사 → 패키지 → starship.toml → Nerd Fonts → zshrc → statusline + `statusLine` 키 merge → chsh 안내 |
+| `install.sh` | — | 부트스트랩. 의존성 검사 → 패키지 → starship.toml → Nerd Fonts → zshrc → statusline + `statusLine` 키 merge → Codex `status_line` 키 merge → chsh 안내 |
 | `uninstall.sh` | — | `install.sh` 의 역연산. `--purge`(새로 설치한 패키지까지), `--keep-backup` |
 | `starship/starship.toml` | `~/.config/starship.toml` | 프롬프트 정의 |
 | `zsh/zshrc.macos` | `~/.zshrc` (Darwin) | brew 기반. `HOMEBREW_PREFIX` 자동 감지 |
 | `zsh/zshrc.linux` | `~/.zshrc` (그 외) | 미니멀판. 도구가 없으면 기본 프롬프트·`ls --color`·일반 `cd` 로 폴백 |
 | `zsh/zshrc.local.example` | 배치 안 함 | `~/.zshrc.local` 템플릿. 사용자가 직접 복사한다. **placeholder 만** 담는다 |
 | `claude/statusline-command.sh` | `~/.claude/statusline-command.sh` | statusLine JSON(stdin) → 한 줄 출력. `jq` 필요 |
+| `codex/status-line.py` | 배치 안 함 | `check`/`apply`/`restore`. `~/.codex/config.toml` 의 `[tui]` `status_line` 키만 줄 단위로 편집. `install.sh`·`uninstall.sh` 가 호출 |
+| `scripts/test-codex-status-line.sh` | — | 위 스크립트의 임시 `HOME` 왕복 시험 |
 | `.gitignore` | — | 머신별·시크릿 파일명 차단 |
 
 홈에 생기는 부산물: `~/.dotfiles-backup/`(원본 기록과 설치 manifest), 배치 대상 옆의 `*.bak`(1세대), 폰트 디렉터리의 `.nerd-font-<name>-installed` 마커와 `.nerd-font-<name>-files.txt` manifest.
@@ -54,6 +57,7 @@
 - **실패는 변경 전에**: 의존성 검사(0 단계)에서 실패하면 `~/.dotfiles-backup` 을 포함해 홈에 아무것도 만들지 않는다. 새 전제 조건은 0 단계에 추가한다.
 - **덮어쓰기 전 백업**: 홈 파일 배치는 반드시 `deploy_file` 을 거친다(최초 원본을 `.orig`/`.absent` 로 기록 → 내용이 다르면 `.bak` → 복사). `cp` 직접 호출 금지. 최초 기록은 재실행 때 갱신하지 않는다.
 - **`settings.json` 은 키 단위 merge**: `statusLine` 외의 키를 읽거나 바꾸지 않는다. 쓰기는 같은 디렉터리의 임시 파일 + `os.replace` 로 원자적으로, 기존 mode 를 보존한다. 깨진 JSON 이면 손대지 않고 중단한다.
+- **`config.toml` 도 키 단위 merge**: `[tui]` 의 `status_line` 외에는 읽거나 바꾸지 않는다. TOML writer 가 없으므로 그 키의 줄만 교체하고 나머지는 바이트 그대로 둔다. `tomllib` 이 있으면 쓰기 전에 "`status_line` 외에는 같다"를 검증하고, 깨진 TOML·미지원 표기면 손대지 않고 중단한다. `install.sh` 와 `uninstall.sh` 가 같은 파서를 쓰도록 로직은 `codex/status-line.py` 한 곳에만 둔다. Codex 를 쓰지 않는 머신에서는 `~/.codex` 를 만들지 않는다.
 - **설치한 것만 지운다**: `--purge` 는 manifest(`brew-installed.txt`·`pkg-installed.txt`·`bin-installed.txt`)에 기록된 것만, 폰트는 파일 manifest 에 적힌 것만 제거한다. 원래 있던 것을 지우지 않는다.
 - **사용자 파일은 건드리지 않는다**: `~/.zshrc.local`, `~/.secrets.zsh`, `~/.claude/CLAUDE.md` 는 만들지도 지우지도 않는다.
 - **install 과 uninstall 은 한 쌍**: `install.sh` 가 홈에 뭔가를 새로 만들면 같은 변경에서 `uninstall.sh` 에 역연산을 넣는다.
@@ -68,7 +72,8 @@
 
 ```bash
 # 문법
-bash -n install.sh uninstall.sh claude/statusline-command.sh
+bash -n install.sh uninstall.sh claude/statusline-command.sh scripts/test-codex-status-line.sh
+python3 -m py_compile codex/status-line.py
 zsh -n zsh/zshrc.macos zsh/zshrc.linux zsh/zshrc.local.example
 
 # 실제 홈에 영향 없이 설치/제거 왕복 (패키지는 이미 설치된 머신 기준)
@@ -78,6 +83,9 @@ HOME="$T" ./uninstall.sh && find "$T" -type f -not -path '*/Library/Caches/*'   
 
 # statusline
 echo '{"workspace":{"current_dir":"/tmp"},"model":{"display_name":"test"}}' | bash claude/statusline-command.sh
+
+# Codex status line — 임시 HOME 에서 apply 2회 → restore 후 원본과 바이트 비교, 깨진 TOML·미지원 표기 거부
+scripts/test-codex-status-line.sh
 
 # 공개 전 식별자 검사 — 결과가 없어야 한다
 git grep -nIE '([0-9]{1,3}\.){3}[0-9]{1,3}|/Users/[a-z0-9]+|/home/[a-z0-9]+|glpat-|ghp_|BEGIN [A-Z ]*PRIVATE KEY' -- ':!AGENTS.md'
