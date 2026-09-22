@@ -18,7 +18,7 @@ dotfiles/
 │   ├── zshrc.linux            # Linux 서버용 — 같은 구조의 미니멀판, 도구는 있을 때만 활성
 │   └── zshrc.local.example    # 머신별 alias/함수 템플릿(placeholder) → ~/.zshrc.local (미추적) 로 복사해 사용
 ├── claude/
-│   └── statusline-command.sh  # Claude Code 하단 statusline (경로·git·모델·컨텍스트 바·rate limit)
+│   └── statusline-command.sh  # Claude Code 하단 statusline 2줄 (경로·git·모델·컨텍스트 / 비용·캐시·한도·버전)
 ├── codex/
 │   └── status-line.py         # Codex CLI status line — config.toml 의 [tui] status_line 키만 merge/복원
 └── scripts/
@@ -121,7 +121,19 @@ starship 1.26 기준. `[palettes.catppuccin_mocha]` 로 색을 이름으로 참�
 
 ## Claude Code statusline
 
-`claude/statusline-command.sh` 는 stdin 으로 받은 Claude Code statusLine JSON 을 파싱해 한 줄로 출력한다: 경로 · git 브랜치/dirty · 모델명 · 컨텍스트 사용률 바 · rate limit. 런타임에 `jq` 가 필요하다.
+`claude/statusline-command.sh` 는 stdin 으로 받은 Claude Code statusLine JSON 을 파싱해 **두 줄**로 출력한다. 런타임에 `jq` 가 필요하다.
+
+| 줄 | 내용 |
+|---|---|
+| 1행 | 경로 · git 브랜치/dirty · 모델명(추론 강도 · thinking · fast) · 컨텍스트 사용률 바와 입력/창 크기 · 출력 토큰 |
+| 2행 | 세션 비용 · 소요 시간(전체·API) · 변경 라인 수 · 프롬프트 캐시 적중률 · 5시간/주간 사용 한도와 리셋 시각 · 출력 스타일 · CLI 버전 |
+
+```
+dotfiles │ ⎇ main │ Opus 5 (1M context) medium think │ █░░░░░░░░░ 10% (98k/1000k) ↑3
+$1.51 5m(api 1m) │ cache 95% │ 5h 16%↺12:00  7d 48%↺05:00 │ Proactive │ v2.1.278
+```
+
+렌더 빈도가 높으므로 `jq` 는 한 번만 호출해 모든 필드를 US(0x1f) 구분자로 받는다(탭은 IFS 공백류라 빈 필드가 합쳐져 값이 밀린다). payload 에 없는 필드는 그 구간을 통째로 생략하므로, 해당 키를 주지 않는 CLI 버전에서도 나머지는 그대로 나온다. 컨텍스트는 60%/80% 에서 색이 바뀌고 `exceeds_200k_tokens` 가 참이면 경고색과 `>200k` 표시가 붙는다.
 
 `install.sh` 는 스크립트를 배치하고 `~/.claude/settings.json` 의 `statusLine` 키 하나만 merge 한다. `settings.json` 전체와 `~/.claude/CLAUDE.md` 같은 개인 지침은 이 저장소가 관리하지 않는다.
 
@@ -131,10 +143,12 @@ Codex CLI 는 Claude Code 와 달리 **외부 명령을 실행하는 status line
 
 ```toml
 [tui]
-status_line = ["current-dir", "git-branch", "model-with-reasoning", "context-used", "five-hour-limit", "weekly-limit"]
+status_line = ["current-dir", "git-branch", "model-with-reasoning", "fast-mode", "context-used", "total-input-tokens", "total-output-tokens", "estimated-thread-cost", "thread-credits", "five-hour-limit", "weekly-limit", "codex-version"]
 ```
 
-경로 · git 브랜치 · 모델(추론 강도 포함) · 컨텍스트 사용률 · 5시간/주간 사용 한도. 구성을 바꾸려면 `codex/status-line.py` 의 `WANT` 를 고친다(Codex 안에서 `/statusline` 으로 바꾼 값은 `install.sh` 재실행 때 덮어쓴다).
+위치(경로 · git 브랜치) → 모델(추론 강도 · fast 모드) → 소비(컨텍스트 사용률 · 입출력 토큰) → 비용(예상 비용 · 크레딧) → 5시간/주간 사용 한도 → CLI 버전 순으로, Claude statusline 과 같은 배열이다.
+
+codex-cli 0.155.1 이 인식하는 항목 ID 는 이 밖에도 `app-name`, `project-name`, `run-state`, `thread-title`, `thread-name`, `thread-id`, `context-remaining`, `used-tokens`, `task-progress` 가 있다. 구성을 바꾸려면 `codex/status-line.py` 의 `WANT` 를 고친다(Codex 안에서 `/statusline` 으로 바꾼 값은 `install.sh` 재실행 때 덮어쓴다).
 
 python3 표준 라이브러리에는 TOML writer 가 없어 `status_line` 키의 줄만 교체한다. python 3.11+ 이면 `tomllib` 으로 쓰기 전에 결과를 다시 파싱해 `status_line` 외에는 바뀌지 않았는지 확인하고, 다르면 쓰지 않고 중단한다. `[tui]` 테이블 표기가 아닌 설정(`tui.status_line = ...`, 인라인 테이블)은 지원하지 않는다. `config.toml` 의 나머지(모델·프로필·프로젝트 신뢰 설정 등)는 이 저장소가 관리하지 않는다.
 
