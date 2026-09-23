@@ -218,14 +218,14 @@ Codex CLI 는 Claude Code 와 달리 **외부 명령을 실행하는 status line
 
 ```toml
 [tui]
-status_line = ["current-dir", "git-branch", "model-with-reasoning", "context-used", "estimated-thread-cost", "thread-credits", "five-hour-limit", "weekly-limit", "fast-mode", "total-input-tokens", "total-output-tokens", "codex-version"]
+status_line = ["current-dir", "estimated-thread-cost", "thread-credits", "weekly-limit", "five-hour-limit", "model-with-reasoning", "context-used", "git-branch", "total-input-tokens", "total-output-tokens", "fast-mode", "codex-version"]
 ```
 
-터미널 폭이 좁으면 **뒤에서부터 잘리므로** 중요한 것을 앞에 둔다: 위치(경로 · git 브랜치) → 모델(추론 강도) → 컨텍스트 사용률 → 비용(예상 비용 · 크레딧) → 5시간/주간 사용 한도 → 부가 정보(fast 모드 · 입출력 토큰 · CLI 버전). 80열 안팎에서도 비용·한도가 보이도록 한 순서이고, `scripts/test-codex-status-line.sh` 가 이 배열을 그대로 검증한다.
+Codex TUI 는 터미널 폭이 부족하면 **오른쪽 항목부터 `…` 로 생략하므로** 중요한 것을 앞에 둔다: 위치(경로) → 비용(예상 비용 · 크레딧) → 주간/5시간 사용 한도 → 모델(추론 강도) → 컨텍스트 사용률 → git 브랜치 → 부가 정보(입출력 토큰 · fast 모드 · CLI 버전). 80열 터미널에서도 비용·한도가 잘리지 않도록 한 순서이고, `scripts/test-codex-status-line.sh` 가 이 배열을 그대로 검증한다.
 
 `estimated-thread-cost`·`thread-credits` 는 **Enterprise 워크스페이스에서만 값이 오고**, 그 밖의 로그인(개인·팀 ChatGPT 구독, API 키)에서는 칸 자체가 생략된다 — 설정 오류가 아니다. 한도 항목도 서버가 값을 줄 때만 보이며, 현재 값은 Codex 안에서 `/status` 로 확인한다.
 
-codex-cli 0.155.1 이 인식하는 항목 ID 는 이 밖에도 `app-name`, `project-name`, `run-state`, `thread-title`, `thread-name`, `thread-id`, `context-remaining`, `used-tokens`, `task-progress` 가 있다. 구성을 바꾸려면 `codex/status-line.py` 의 `WANT` 를 고친다(Codex 안에서 `/statusline` 으로 바꾼 값은 `install.sh` 재실행 때 덮어쓴다).
+codex-cli 0.156.0 이 인식하는 항목 ID 는 이 밖에도 `app-name`, `project-name`, `run-state`, `thread-title`, `thread-name`, `thread-id`, `context-remaining`, `used-tokens`, `task-progress` 가 있다. 구성을 바꾸려면 `codex/status-line.py` 의 `WANT` 를 고친다(Codex 안에서 `/statusline` 으로 바꾼 값은 `install.sh` 재실행 때 덮어쓴다).
 
 python3 표준 라이브러리에는 TOML writer 가 없어 `status_line` 키의 줄만 교체한다. python 3.11+ 이면 `tomllib` 으로 쓰기 전에 결과를 다시 파싱해 `status_line` 외에는 바뀌지 않았는지 확인하고, 다르면 쓰지 않고 중단한다. `[tui]` 테이블 표기가 아닌 설정(`tui.status_line = ...`, 인라인 테이블)은 지원하지 않는다. `config.toml` 의 나머지(모델·프로필·프로젝트 신뢰 설정 등)는 이 저장소가 관리하지 않는다.
 

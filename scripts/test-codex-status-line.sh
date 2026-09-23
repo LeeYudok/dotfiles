@@ -8,7 +8,7 @@ PY=codex/status-line.py
 fail=0
 T="$(mktemp -d)"
 # 좁은 터미널에서는 뒤부터 잘리므로 순서 자체가 사양이다 (#9) — 위치 → 모델 → 컨텍스트 → 비용 → 한도 → 부가 정보
-WANT_LINE='status_line = ["current-dir", "git-branch", "model-with-reasoning", "context-used", "estimated-thread-cost", "thread-credits", "five-hour-limit", "weekly-limit", "fast-mode", "total-input-tokens", "total-output-tokens", "codex-version"]'
+WANT_LINE='status_line = ["current-dir", "estimated-thread-cost", "thread-credits", "weekly-limit", "five-hour-limit", "model-with-reasoning", "context-used", "git-branch", "total-input-tokens", "total-output-tokens", "fast-mode", "codex-version"]'
 
 run() { HOME="$T/$1" python3 "$PY" "$2"; }
 

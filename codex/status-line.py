@@ -21,25 +21,25 @@ except ImportError:          # python < 3.11 — 검증 없이 줄 단위 편집
     tomllib = None
 
 # codex-cli 가 인식하는 항목 중 상시 유효한 것을 모두 싣되, 폭이 좁으면 뒤에서부터 잘리므로 중요한 것을 앞에 둔다.
-#   위치(경로·브랜치) → 모델 → 컨텍스트 → 비용(크레딧) → 한도 → 부가 정보(fast·입출력 토큰·버전)
+#   위치(경로) → 비용(크레딧) → 한도(주간·5시간) → 모델 → 컨텍스트 → 브랜치 → 부가 정보(입출력 토큰·fast·버전)
 # 비용·크레딧은 Enterprise 워크스페이스에서만 값이 오고 없으면 생략된다 — 그 밖의 로그인은 codex/cost-hook.py 가
 # 턴마다 API 환산 비용을 따로 보여준다.
 # 지원 ID 전체: app-name, project-name, current-dir, run-state, thread-title, thread-name, git-branch,
 #   context-remaining, context-used, five-hour-limit, weekly-limit, thread-credits, estimated-thread-cost,
 #   codex-version, used-tokens, total-input-tokens, total-output-tokens, thread-id, fast-mode,
-#   model-with-reasoning, task-progress (codex-cli 0.155.1 기준)
+#   model-with-reasoning, task-progress (codex-cli 0.156.0 기준)
 WANT = [
     "current-dir",
-    "git-branch",
-    "model-with-reasoning",
-    "context-used",
     "estimated-thread-cost",
     "thread-credits",
-    "five-hour-limit",
     "weekly-limit",
-    "fast-mode",
+    "five-hour-limit",
+    "model-with-reasoning",
+    "context-used",
+    "git-branch",
     "total-input-tokens",
     "total-output-tokens",
+    "fast-mode",
     "codex-version",
 ]
 
