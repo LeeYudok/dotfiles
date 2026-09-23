@@ -143,12 +143,14 @@ Codex CLI 는 Claude Code 와 달리 **외부 명령을 실행하는 status line
 
 ```toml
 [tui]
-status_line = ["current-dir", "git-branch", "model-with-reasoning", "fast-mode", "context-used", "total-input-tokens", "total-output-tokens", "estimated-thread-cost", "thread-credits", "five-hour-limit", "weekly-limit", "codex-version"]
+status_line = ["current-dir", "estimated-thread-cost", "thread-credits", "weekly-limit", "five-hour-limit", "model-with-reasoning", "context-used", "git-branch", "total-input-tokens", "total-output-tokens", "fast-mode", "codex-version"]
 ```
 
-위치(경로 · git 브랜치) → 모델(추론 강도 · fast 모드) → 소비(컨텍스트 사용률 · 입출력 토큰) → 비용(예상 비용 · 크레딧) → 5시간/주간 사용 한도 → CLI 버전 순으로, Claude statusline 과 같은 배열이다.
+Codex TUI 는 터미널 폭이 부족하면 오른쪽 항목부터 `…`로 생략한다. 따라서 좁은 화면에서도 중요한 값이 남도록 **위치 → 비용·크레딧 → 주간·5시간 한도**를 가장 먼저 두고, 모델·컨텍스트·브랜치·세부 입출력 토큰·fast 모드·CLI 버전은 뒤에 둔다. 더 자세한 계정 한도는 Codex 안에서 `/status`로 확인한다.
 
-codex-cli 0.155.1 이 인식하는 항목 ID 는 이 밖에도 `app-name`, `project-name`, `run-state`, `thread-title`, `thread-name`, `thread-id`, `context-remaining`, `used-tokens`, `task-progress` 가 있다. 구성을 바꾸려면 `codex/status-line.py` 의 `WANT` 를 고친다(Codex 안에서 `/statusline` 으로 바꾼 값은 `install.sh` 재실행 때 덮어쓴다).
+`estimated-thread-cost`, `thread-credits`, `five-hour-limit` 같은 항목은 Codex 백엔드와 계정 방식이 해당 값을 제공할 때만 나타난다. 예를 들어 구독형 ChatGPT 인증에서 금액 추정치나 크레딧 잔액을 제공하지 않으면, 설정이 적용돼 있어도 그 구간만 정상적으로 생략된다. 이는 설치 실패가 아니다.
+
+codex-cli 0.156.0 이 인식하는 항목 ID 는 이 밖에도 `app-name`, `project-name`, `run-state`, `thread-title`, `thread-name`, `thread-id`, `context-remaining`, `used-tokens`, `task-progress` 가 있다. 구성을 바꾸려면 `codex/status-line.py` 의 `WANT` 를 고친다(Codex 안에서 `/statusline` 으로 바꾼 값은 `install.sh` 재실행 때 덮어쓴다).
 
 python3 표준 라이브러리에는 TOML writer 가 없어 `status_line` 키의 줄만 교체한다. python 3.11+ 이면 `tomllib` 으로 쓰기 전에 결과를 다시 파싱해 `status_line` 외에는 바뀌지 않았는지 확인하고, 다르면 쓰지 않고 중단한다. `[tui]` 테이블 표기가 아닌 설정(`tui.status_line = ...`, 인라인 테이블)은 지원하지 않는다. `config.toml` 의 나머지(모델·프로필·프로젝트 신뢰 설정 등)는 이 저장소가 관리하지 않는다.
 

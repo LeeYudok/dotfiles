@@ -20,24 +20,25 @@ try:
 except ImportError:          # python < 3.11 — 검증 없이 줄 단위 편집만 한다
     tomllib = None
 
-# claude/statusline-command.sh 와 같은 순서로, codex-cli 가 인식하는 항목 중 상시 유효한 것을 모두 싣는다.
-#   위치(경로·브랜치) → 모델(추론 강도·fast) → 소비(컨텍스트·입출력 토큰) → 비용(크레딧) → 한도 → 버전
+# codex-cli 는 터미널 폭이 부족하면 오른쪽 항목부터 생략한다. 좁은 화면에서도 판단에 필요한 값이
+# 먼저 남도록 위치 다음에 비용·한도를 두고, 모델·컨텍스트·브랜치·세부 토큰은 뒤로 보낸다.
+# 값이 없는 조건부 항목(예상 비용·크레딧·일부 한도)은 Codex TUI 가 해당 구간만 생략한다.
 # 지원 ID 전체: app-name, project-name, current-dir, run-state, thread-title, thread-name, git-branch,
 #   context-remaining, context-used, five-hour-limit, weekly-limit, thread-credits, estimated-thread-cost,
 #   codex-version, used-tokens, total-input-tokens, total-output-tokens, thread-id, fast-mode,
-#   model-with-reasoning, task-progress (codex-cli 0.155.1 기준)
+#   model-with-reasoning, task-progress (codex-cli 0.156.0 기준)
 WANT = [
     "current-dir",
-    "git-branch",
-    "model-with-reasoning",
-    "fast-mode",
-    "context-used",
-    "total-input-tokens",
-    "total-output-tokens",
     "estimated-thread-cost",
     "thread-credits",
-    "five-hour-limit",
     "weekly-limit",
+    "five-hour-limit",
+    "model-with-reasoning",
+    "context-used",
+    "git-branch",
+    "total-input-tokens",
+    "total-output-tokens",
+    "fast-mode",
     "codex-version",
 ]
 

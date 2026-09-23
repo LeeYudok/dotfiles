@@ -5,6 +5,7 @@ set -euo pipefail
 cd "$(dirname "$0")/.."
 
 PY=codex/status-line.py
+EXPECTED='status_line = ["current-dir", "estimated-thread-cost", "thread-credits", "weekly-limit", "five-hour-limit", "model-with-reasoning", "context-used", "git-branch", "total-input-tokens", "total-output-tokens", "fast-mode", "codex-version"]'
 fail=0
 T="$(mktemp -d)"
 
@@ -19,7 +20,7 @@ roundtrip() {           # roundtrip <케이스 이름> — $T/<이름>/.codex/co
   cp "$cfg" "$T/$name.applied"
   run "$name" apply | grep -q '이미 최신' || { echo "FAIL $name: 두 번째 apply 가 멱등이 아님"; fail=1; }
   cmp -s "$cfg" "$T/$name.applied" || { echo "FAIL $name: 두 번째 apply 가 파일을 바꿈"; fail=1; }
-  grep -q '^status_line = \["current-dir", ' "$cfg" || { echo "FAIL $name: status_line 미반영"; fail=1; }
+  grep -Fxq "$EXPECTED" "$cfg" || { echo "FAIL $name: status_line 순서가 기대값과 다름"; fail=1; }
   run "$name" restore >/dev/null
   if [ -f "$T/$name.expected" ]; then
     cmp -s "$cfg" "$T/$name.expected" || { echo "FAIL $name: restore 결과가 원본과 다름"; diff "$T/$name.expected" "$cfg" || true; fail=1; }
