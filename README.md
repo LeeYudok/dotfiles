@@ -20,9 +20,12 @@ dotfiles/
 ├── claude/
 │   └── statusline-command.sh  # Claude Code 하단 statusline 2줄 (경로·git·모델·컨텍스트 / 비용·캐시·한도·버전)
 ├── codex/
-│   └── status-line.py         # Codex CLI status line — config.toml 의 [tui] status_line 키만 merge/복원
+│   ├── status-line.py         # Codex CLI status line — config.toml 의 [tui] status_line 키만 merge/복원
+│   ├── cost-hook.py           # Codex Stop 훅 — 턴마다 API 환산 비용 한 줄 표시 → ~/.codex/cost-hook.py
+│   └── hooks.py               # hooks.json 의 Stop 에 위 훅 항목 하나만 merge/제거
 └── scripts/
     ├── test-codex-status-line.sh  # codex/status-line.py 왕복 시험 (임시 HOME)
+    ├── test-codex-cost-hook.sh    # cost-hook.py 금액 계산 + hooks.py 왕복 시험 (임시 HOME)
     └── test-windows-paths.sh      # Git Bash 거부·WSL 폰트 건너뛰기 시험 (임시 HOME)
 ```
 
@@ -43,14 +46,14 @@ cd dotfiles && ./install.sh
 | 2.5 | Nerd Fonts | GitHub 최신 릴리스에서 `JetBrainsMono`, `D2Coding` zip 을 받아 폰트 디렉터리(macOS `~/Library/Fonts`, Linux `~/.local/share/fonts` + `fc-cache`)에 설치. 폰트별 `.nerd-font-<name>-installed` 마커 파일로 재설치 방지. **WSL 에서는 건너뛰고 안내만** 한다 — [Windows (WSL2)](#windows-wsl2) 참고. |
 | 3 | zshrc | OS 에 맞는 `zsh/zshrc.*` → `~/.zshrc`. 머신별 alias/함수는 `~/.zshrc.local`(미추적) 에 두며 스크립트가 만들지 않는다 — 없으면 안내만. |
 | 4 | Claude statusline | `claude/statusline-command.sh` → `~/.claude/statusline-command.sh` (+x). 스크립트 런타임에 `jq` 필요 — 없으면 경고만. 이어서 **python3** 로 `~/.claude/settings.json` 의 `statusLine` 키만 merge (다른 키 불변, 파일 없으면 생성). 같은 디렉터리의 임시 파일에 쓰고 `os.replace` 로 교체하므로 중단돼도 원본이 깨지지 않고, 기존 파일 mode 를 보존한다. |
-| 5 | Codex status line | Codex 를 쓰는 머신(`codex` 명령 또는 `~/.codex` 존재)에서만. `codex/status-line.py apply` 로 `~/.codex/config.toml` 의 `[tui]` `status_line` 키만 merge (다른 테이블·키·주석 불변, 파일 없으면 생성). 원자적 쓰기와 mode 보존은 4 단계와 같다. |
+| 5 | Codex status line | Codex 를 쓰는 머신(`codex` 명령 또는 `~/.codex` 존재)에서만. `codex/status-line.py apply` 로 `~/.codex/config.toml` 의 `[tui]` `status_line` 키만 merge (다른 테이블·키·주석 불변, 파일 없으면 생성). 비용 훅 `codex/cost-hook.py` 를 `~/.codex/cost-hook.py` 로 배치하고 `codex/hooks.py apply` 로 `~/.codex/hooks.json` 의 `Stop` 에 그 항목 하나만 추가한다(다른 훅 불변). 원자적 쓰기와 mode 보존은 4 단계와 같다. `hooks.json` 이 깨진 JSON 이면 0 단계에서 중단. |
 | 6 | 기본 셸 | `$SHELL` 이 zsh 가 아니면 `chsh -s <zsh 경로>` 안내만 (자동 변경 안 함). |
 
 런타임 의존성: `curl`, `unzip`, `python3`(0 단계에서 검사). macOS 는 Homebrew 필수. Windows 는 WSL2 안에서 실행한다. `jq` 는 statusline 스크립트 런타임 전용이라 1 단계에서 자동 설치한다(Linux 는 sudo 가능할 때만).
 
 멱등(idempotent): 재실행해도 안전하다. 배치 대상 파일(`starship.toml`·`.zshrc`·`statusline-command.sh`)은 기존 파일과 내용이 다를 때만 `.bak` 백업 후 덮어쓴다 — `.bak` 은 1세대만 유지되므로 두 번 연속 다른 내용을 배치하면 첫 백업은 사라진다.
 
-최초 실행 시 덮어쓸 파일의 원본과 설치 기록을 `~/.dotfiles-backup/` 에 남긴다(`<name>.orig` / `<name>.absent`, `brew-installed.txt`·`pkg-installed.txt`·`bin-installed.txt`, `settings.json.orig`, `codex-config.toml.orig`). 재실행해도 이 기록은 갱신하지 않으므로 몇 번을 돌려도 "설치 전 원본"이 보존된다. Nerd Font 는 설치한 파일명을 `.nerd-font-<name>-files.txt` manifest 로 남긴다.
+최초 실행 시 덮어쓸 파일의 원본과 설치 기록을 `~/.dotfiles-backup/` 에 남긴다(`<name>.orig` / `<name>.absent`, `brew-installed.txt`·`pkg-installed.txt`·`bin-installed.txt`, `settings.json.orig`, `codex-config.toml.orig`, `codex-hooks.json.absent`/`.present`). 재실행해도 이 기록은 갱신하지 않으므로 몇 번을 돌려도 "설치 전 원본"이 보존된다. Nerd Font 는 설치한 파일명을 `.nerd-font-<name>-files.txt` manifest 로 남긴다.
 
 `~/.claude/settings.json` 전체는 이 저장소에 두지 않는다 — permissions/hooks/model 등 머신별·보안 민감 설정 포함. statusline 스크립트와 해당 키 merge 만 관리.
 
@@ -80,7 +83,7 @@ Windows 사용자 프로필은 WSL 의 `$HOME` 밖이라 스크립트가 자동�
 ## 되돌리기 (uninstall.sh)
 
 ```bash
-./uninstall.sh            # 배치 파일 복원/제거 + settings.json statusLine·Codex status_line 키 복원 + Nerd Font 제거
+./uninstall.sh            # 배치 파일 복원/제거 + settings.json statusLine·Codex status_line 키 복원·비용 훅 제거 + Nerd Font 제거
 ./uninstall.sh --purge    # 위에 더해 install.sh 가 새로 설치한 brew/dnf/apt 패키지·starship 바이너리 제거
 ./uninstall.sh --keep-backup   # ~/.dotfiles-backup 을 남김 (기본은 복원 후 삭제)
 ```
@@ -88,6 +91,7 @@ Windows 사용자 프로필은 WSL 의 `$HOME` 밖이라 스크립트가 자동�
 - 복원 우선순위: `~/.dotfiles-backup/<name>.orig` 가 있으면 그 내용으로, `.absent` 면 삭제, 둘 다 없으면(이 기록 방식 이전에 설치한 머신) `.bak` 이 있을 때 `.bak` 으로, 없으면 삭제.
 - `settings.json` 은 `statusLine` 키만 설치 전 값으로 되돌리고 다른 키(permissions/hooks/model 등)는 그대로 둔다. 설치 전에 파일이 없었고 남는 키도 없으면 파일 자체를 지운다. 쓰기는 install 과 같은 원자적 교체이며, 깨진 JSON 이면 손대지 않고 중단한다.
 - `~/.codex/config.toml` 도 `[tui]` 의 `status_line` 키만 설치 전 값으로 되돌린다. 설치 전에 키가 없었으면 키를 지우고, 그 결과 설치가 만든 `[tui]` 테이블이나 파일이 비면 같이 지운다. 설치가 Codex 단계를 건너뛴 머신에서는 아무것도 하지 않는다.
+- `~/.codex/hooks.json` 은 다른 도구도 자기 훅을 넣고 빼는 공유 파일이라 원본으로 통째 되돌리지 않고, 비용 훅 항목(`~/.codex/cost-hook.py` 를 가리키는 것)만 뺀다. 설치 전에 파일이 없었고 남는 훅도 없으면 파일을 지운다. `~/.codex/cost-hook.py` 는 다른 배치 파일과 같은 규칙으로 복원/삭제한다.
 - `~/.zshrc.local`, `~/.secrets.zsh`, `~/.claude/CLAUDE.md` 는 사용자 파일이므로 건드리지 않는다.
 - 폰트는 manifest 에 적힌 파일만 지운다. manifest 없이 설치된 옛 머신은 마커만 지우고 경고를 낸다.
 - `--purge` 는 `install.sh` 가 **새로 설치했다고 기록한 것만** 제거한다. 이미 깔려 있던 starship/eza 등은 건드리지 않는다.
@@ -139,18 +143,34 @@ $1.51 5m(api 1m) │ cache 95% │ 5h 16%↺12:00  7d 48%↺05:00 │ Proactive 
 
 ## Codex CLI status line
 
-Codex CLI 는 Claude Code 와 달리 **외부 명령을 실행하는 status line 이 없다.** `~/.codex/config.toml` 의 `[tui]` 테이블에 내장 항목 ID 배열을 적는 방식만 지원하므로, 스크립트를 배치하는 대신 그 키 하나를 Claude statusline 과 같은 순서로 맞춘다.
+Codex CLI 는 Claude Code 와 달리 **외부 명령을 실행하는 status line 이 없다.** `~/.codex/config.toml` 의 `[tui]` 테이블에 내장 항목 ID 배열을 적는 방식만 지원하므로, 스크립트를 배치하는 대신 그 키 하나를 맞춘다.
 
 ```toml
 [tui]
-status_line = ["current-dir", "git-branch", "model-with-reasoning", "fast-mode", "context-used", "total-input-tokens", "total-output-tokens", "estimated-thread-cost", "thread-credits", "five-hour-limit", "weekly-limit", "codex-version"]
+status_line = ["current-dir", "git-branch", "model-with-reasoning", "context-used", "estimated-thread-cost", "thread-credits", "five-hour-limit", "weekly-limit", "fast-mode", "total-input-tokens", "total-output-tokens", "codex-version"]
 ```
 
-위치(경로 · git 브랜치) → 모델(추론 강도 · fast 모드) → 소비(컨텍스트 사용률 · 입출력 토큰) → 비용(예상 비용 · 크레딧) → 5시간/주간 사용 한도 → CLI 버전 순으로, Claude statusline 과 같은 배열이다.
+터미널 폭이 좁으면 **뒤에서부터 잘리므로** 중요한 것을 앞에 둔다: 위치(경로 · git 브랜치) → 모델(추론 강도) → 컨텍스트 사용률 → 비용(예상 비용 · 크레딧) → 5시간/주간 사용 한도 → 부가 정보(fast 모드 · 입출력 토큰 · CLI 버전). 80열 안팎에서도 비용·한도가 보이도록 한 순서이고, `scripts/test-codex-status-line.sh` 가 이 배열을 그대로 검증한다.
+
+`estimated-thread-cost`·`thread-credits` 는 **Enterprise 워크스페이스에서만 값이 오고**, 그 밖의 로그인(개인·팀 ChatGPT 구독, API 키)에서는 칸 자체가 생략된다 — 설정 오류가 아니다. 한도 항목도 서버가 값을 줄 때만 보이며, 현재 값은 Codex 안에서 `/status` 로 확인한다.
 
 codex-cli 0.155.1 이 인식하는 항목 ID 는 이 밖에도 `app-name`, `project-name`, `run-state`, `thread-title`, `thread-name`, `thread-id`, `context-remaining`, `used-tokens`, `task-progress` 가 있다. 구성을 바꾸려면 `codex/status-line.py` 의 `WANT` 를 고친다(Codex 안에서 `/statusline` 으로 바꾼 값은 `install.sh` 재실행 때 덮어쓴다).
 
 python3 표준 라이브러리에는 TOML writer 가 없어 `status_line` 키의 줄만 교체한다. python 3.11+ 이면 `tomllib` 으로 쓰기 전에 결과를 다시 파싱해 `status_line` 외에는 바뀌지 않았는지 확인하고, 다르면 쓰지 않고 중단한다. `[tui]` 테이블 표기가 아닌 설정(`tui.status_line = ...`, 인라인 테이블)은 지원하지 않는다. `config.toml` 의 나머지(모델·프로필·프로젝트 신뢰 설정 등)는 이 저장소가 관리하지 않는다.
+
+### API 환산 비용 (Stop 훅)
+
+내장 비용 항목이 비는 환경을 위해, Codex 의 **Stop 훅**(턴이 끝날 때 실행)이 턴마다 아래 한 줄을 대화 영역에 표시한다.
+
+```
+API 환산 $1.23 · 이번 턴 +$0.04 · 입력 1.4M(캐시 90%) · 출력 11.3k
+```
+
+- 세션 기록(`~/.codex/sessions/…/rollout-*.jsonl`)의 `token_count` 누적값을 구간마다 그때의 모델 단가로 곱한다. 스레드 도중 모델을 바꿔도 구간별로 계산되고, 단가표에 없는 모델(로컬 모델 등)만 쓴 스레드는 아무것도 표시하지 않는다.
+- 단가는 [OpenAI API 가격표](https://developers.openai.com/api/docs/pricing)의 Standard · Short context 값을 `codex/cost-hook.py` 에 적어 둔 것이다. 가격이 바뀌거나 새 모델이 나오면 그 표를 고친다. 긴 컨텍스트 할증은 반영하지 않는다.
+- Fast mode 여부는 세션 기록에 남지 않아 `config.toml` 최상위 `service_tier` 가 `"fast"`/`"priority"` 일 때만 Fast mode 단가를 쓴다. Codex 안에서 `/fast` 로만 켠 경우는 Standard 단가로 계산된다.
+- ChatGPT 구독 로그인이면 실제 청구액이 아니라 **같은 사용량을 API 로 썼을 때의 추정치**다.
+- Codex 는 새로 추가된 훅을 한 번 검토·승인해야 실행한다. 설치 후 Codex 를 처음 열 때 나오는 훅 검토 안내에서 승인한다.
 
 ## 추적 범위
 
@@ -159,7 +179,7 @@ python3 표준 라이브러리에는 TOML writer 가 없어 `status_line` 키의
 | OS 공통 프롬프트(`starship.toml`) | 실제 호스트명·IP·SSH 포트·내부 URL |
 | OS 별 zshrc (도구가 있을 때만 켜지는 구조) | 머신별 alias/함수 → `~/.zshrc.local` |
 | placeholder 로만 채운 `zshrc.local.example` | API 키·토큰 → `~/.secrets.zsh` (mode 600) |
-| statusline 스크립트, Codex `status_line` 항목 구성 | `~/.claude/settings.json`·`~/.codex/config.toml` 전체, 개인 `CLAUDE.md` |
+| statusline 스크립트, Codex `status_line` 항목 구성·비용 훅 | `~/.claude/settings.json`·`~/.codex/config.toml`·`~/.codex/hooks.json` 전체, 개인 `CLAUDE.md` |
 | 설치/제거 스크립트와 문서 | 머신별 적용 현황, 백업 파일(`*.bak`) |
 
 `.gitignore` 가 오른쪽 열의 파일명을 막아 두지만, 템플릿이나 문서에 실제 값을 적는 실수는 막지 못한다. 커밋 전에 `git diff --cached` 로 호스트명·IP·URL 이 들어가지 않았는지 확인한다.

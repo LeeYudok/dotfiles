@@ -20,8 +20,10 @@ try:
 except ImportError:          # python < 3.11 — 검증 없이 줄 단위 편집만 한다
     tomllib = None
 
-# claude/statusline-command.sh 와 같은 순서로, codex-cli 가 인식하는 항목 중 상시 유효한 것을 모두 싣는다.
-#   위치(경로·브랜치) → 모델(추론 강도·fast) → 소비(컨텍스트·입출력 토큰) → 비용(크레딧) → 한도 → 버전
+# codex-cli 가 인식하는 항목 중 상시 유효한 것을 모두 싣되, 폭이 좁으면 뒤에서부터 잘리므로 중요한 것을 앞에 둔다.
+#   위치(경로·브랜치) → 모델 → 컨텍스트 → 비용(크레딧) → 한도 → 부가 정보(fast·입출력 토큰·버전)
+# 비용·크레딧은 Enterprise 워크스페이스에서만 값이 오고 없으면 생략된다 — 그 밖의 로그인은 codex/cost-hook.py 가
+# 턴마다 API 환산 비용을 따로 보여준다.
 # 지원 ID 전체: app-name, project-name, current-dir, run-state, thread-title, thread-name, git-branch,
 #   context-remaining, context-used, five-hour-limit, weekly-limit, thread-credits, estimated-thread-cost,
 #   codex-version, used-tokens, total-input-tokens, total-output-tokens, thread-id, fast-mode,
@@ -30,14 +32,14 @@ WANT = [
     "current-dir",
     "git-branch",
     "model-with-reasoning",
-    "fast-mode",
     "context-used",
-    "total-input-tokens",
-    "total-output-tokens",
     "estimated-thread-cost",
     "thread-credits",
     "five-hour-limit",
     "weekly-limit",
+    "fast-mode",
+    "total-input-tokens",
+    "total-output-tokens",
     "codex-version",
 ]
 

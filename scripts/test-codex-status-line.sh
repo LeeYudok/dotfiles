@@ -7,6 +7,8 @@ cd "$(dirname "$0")/.."
 PY=codex/status-line.py
 fail=0
 T="$(mktemp -d)"
+# 좁은 터미널에서는 뒤부터 잘리므로 순서 자체가 사양이다 (#9) — 위치 → 모델 → 컨텍스트 → 비용 → 한도 → 부가 정보
+WANT_LINE='status_line = ["current-dir", "git-branch", "model-with-reasoning", "context-used", "estimated-thread-cost", "thread-credits", "five-hour-limit", "weekly-limit", "fast-mode", "total-input-tokens", "total-output-tokens", "codex-version"]'
 
 run() { HOME="$T/$1" python3 "$PY" "$2"; }
 
@@ -19,7 +21,7 @@ roundtrip() {           # roundtrip <케이스 이름> — $T/<이름>/.codex/co
   cp "$cfg" "$T/$name.applied"
   run "$name" apply | grep -q '이미 최신' || { echo "FAIL $name: 두 번째 apply 가 멱등이 아님"; fail=1; }
   cmp -s "$cfg" "$T/$name.applied" || { echo "FAIL $name: 두 번째 apply 가 파일을 바꿈"; fail=1; }
-  grep -q '^status_line = \["current-dir", ' "$cfg" || { echo "FAIL $name: status_line 미반영"; fail=1; }
+  grep -qxF "$WANT_LINE" "$cfg" || { echo "FAIL $name: status_line 이 기대한 순서와 다름"; grep status_line "$cfg"; fail=1; }
   run "$name" restore >/dev/null
   if [ -f "$T/$name.expected" ]; then
     cmp -s "$cfg" "$T/$name.expected" || { echo "FAIL $name: restore 결과가 원본과 다름"; diff "$T/$name.expected" "$cfg" || true; fail=1; }
