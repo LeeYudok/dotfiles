@@ -14,6 +14,7 @@
 #   4.   Claude Code statusline 스크립트 배치 (~/.claude/statusline-command.sh)
 #        + settings.json 의 statusLine 키만 merge (python3, 원자적 쓰기)
 #   5.   Codex CLI status line — ~/.codex/config.toml 의 [tui] status_line 키만 merge (codex/status-line.py)
+#        + 비용 훅 배치 (~/.codex/cost-hook.py) 와 ~/.codex/hooks.json Stop 항목 하나만 merge (codex/hooks.py)
 #        Codex 를 쓰는 머신(codex 명령 또는 ~/.codex 존재)에서만. 없으면 건너뜀
 #   6.   기본 셸이 zsh 가 아니면 chsh 안내
 #
@@ -27,6 +28,7 @@
 #   - brew-installed.txt / pkg-installed.txt / bin-installed.txt : 이 스크립트가 새로 설치한 것만 기록
 #   - settings.json.orig : settings.json 설치 전 전체 내용 (없었으면 settings.json.absent)
 #   - codex-config.toml.orig : ~/.codex/config.toml 설치 전 전체 내용 (없었으면 codex-config.toml.absent)
+#   - codex-hooks.json.absent / .present : ~/.codex/hooks.json 설치 전 유무 (다른 도구와 공유하는 파일이라 내용은 기록하지 않음)
 
 set -euo pipefail
 cd "$(dirname "$0")"
@@ -59,6 +61,9 @@ fi
 # ~/.codex/config.toml 이 깨진 TOML 이거나 [tui] 표기가 아니면 5 단계에서 손댈 수 없으므로 시작 전에 막는다
 if [ -f "$HOME/.codex/config.toml" ]; then
   python3 codex/status-line.py check || die "$HOME/.codex/config.toml 을 편집할 수 없음 — 수동으로 고친 뒤 다시 실행 (홈 파일은 변경하지 않았음)"
+fi
+if [ -f "$HOME/.codex/hooks.json" ]; then
+  python3 codex/hooks.py check || die "$HOME/.codex/hooks.json 을 편집할 수 없음 — 수동으로 고친 뒤 다시 실행 (홈 파일은 변경하지 않았음)"
 fi
 
 # WSL 여부 — 커널 버전 문자열에 microsoft 가 들어 있다. DOTFILES_PROC_VERSION 은 시험용(다른 파일을 읽게 한다)
@@ -248,8 +253,11 @@ info "Claude statusline 배치 완료"
 
 # ── 5. Codex CLI status line ───────────────────────────────
 # Codex 는 외부 명령 status line 이 없어 스크립트 대신 config.toml 의 [tui] status_line 키만 merge (다른 키는 건드리지 않음)
+# 내장 비용 항목(estimated-thread-cost)은 Enterprise 전용이라, API 환산 비용은 Stop 훅이 턴마다 한 줄로 보여준다
 if command -v codex >/dev/null || [ -d "$HOME/.codex" ]; then
   python3 codex/status-line.py apply
+  deploy_file codex/cost-hook.py "$HOME/.codex/cost-hook.py" codex-cost-hook.py
+  python3 codex/hooks.py apply
   info "Codex status line 배치 완료"
 fi
 

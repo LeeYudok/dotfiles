@@ -111,9 +111,11 @@ else:
     atomic_write_json(p, d)
 PYEOF
 
-# ── 3. Codex config.toml 의 [tui] status_line 키만 복원 (다른 키 불변, 원자적 쓰기) ──
+# ── 3. Codex config.toml 의 [tui] status_line 키만 복원 + 비용 훅 제거 (다른 키·훅 불변, 원자적 쓰기) ──
 # install.sh 가 Codex 단계를 건너뛴 머신(기록 없음)에서는 아무것도 하지 않는다
 python3 codex/status-line.py restore
+python3 codex/hooks.py restore       # hooks.json 에서 비용 훅 항목만 제거 (다른 훅 불변)
+restore_file "$HOME/.codex/cost-hook.py" codex-cost-hook.py
 
 # ── 4. Nerd Fonts 제거 (manifest 에 기록된 파일만) ───────────
 if [ "$OS" = "Darwin" ]; then FONT_DIR="$HOME/Library/Fonts"; else FONT_DIR="$HOME/.local/share/fonts"; fi
