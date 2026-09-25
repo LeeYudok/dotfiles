@@ -1,6 +1,6 @@
 # dotfiles
 
-zsh + starship 셸 환경과 Claude Code statusline·Codex CLI status line 을 새 머신에 한 번에 맞추는 부트스트랩 저장소. macOS(Homebrew)와 Linux(dnf/apt), Windows(WSL2) 를 같은 `install.sh` 로 설치하고, `uninstall.sh` 로 설치 전 상태까지 되돌린다.
+zsh + starship 셸 환경과 Claude Code statusline·Codex CLI status line 을 새 머신에 한 번에 맞추는 부트스트랩 저장소. macOS(Homebrew)와 Linux(dnf/apt), Windows(WSL2) 를 같은 `install.sh` 로 설치하고, `uninstall.sh` 로 설치 전 상태까지 되돌린다. WSL2 를 쓸 수 없는 폐쇄망 Windows 는 `windows/install-git.cmd` 로 Git 을 오프라인 설치하고 Git Bash 환경을 맞춘다 — [Windows 폐쇄망 (Git Bash)](#windows-폐쇄망-git-bash).
 
 어느 머신에나 그대로 적용할 수 있는 설정만 추적한다. 호스트 alias·내부 URL·API 키·개인 에이전트 지침처럼 머신이나 사람에 묶인 것은 저장소 밖(`~/.zshrc.local`, `~/.secrets.zsh`)에 둔다 — 자세한 경계는 [추적 범위](#추적-범위) 참고. 에이전트·기여자용 상세 규칙은 [AGENTS.md](AGENTS.md).
 
@@ -19,6 +19,14 @@ dotfiles/
 │   └── zshrc.local.example    # 머신별 alias/함수 템플릿(placeholder) → ~/.zshrc.local (미추적) 로 복사해 사용
 ├── claude/
 │   └── statusline-command.sh  # Claude Code 하단 statusline 2줄 (경로·git·모델·컨텍스트 / 비용·캐시·한도·버전)
+├── gitbash/
+│   ├── bashrc                 # Git Bash 용 ~/.bashrc — UTF-8·한글 경로·히스토리·alias, starship/zoxide 는 있을 때만
+│   └── bash_profile           # Git Bash 로그인 셸이 ~/.bashrc 를 읽게 하는 ~/.bash_profile
+├── windows/
+│   ├── install-git.ps1        # 폐쇄망 Windows — Git for Windows 오프라인 설치 + Git Bash 환경 (멱등)
+│   ├── install-git.cmd        # cmd 에서 위 스크립트 실행 (ExecutionPolicy Bypass)
+│   ├── uninstall-git.ps1      # install-git.ps1 의 역연산 (-Purge 로 설치한 Git 까지)
+│   └── uninstall-git.cmd      # cmd 에서 위 스크립트 실행
 ├── codex/
 │   ├── status-line.py         # Codex CLI status line — config.toml 의 [tui] status_line 키만 merge/복원
 │   ├── cost-hook.py           # Codex Stop 훅 — 턴마다 API 환산 비용 한 줄 표시 → ~/.codex/cost-hook.py
@@ -26,7 +34,8 @@ dotfiles/
 └── scripts/
     ├── test-codex-status-line.sh  # codex/status-line.py 왕복 시험 (임시 HOME)
     ├── test-codex-cost-hook.sh    # cost-hook.py 금액 계산 + hooks.py 왕복 시험 (임시 HOME)
-    └── test-windows-paths.sh      # Git Bash 거부·WSL 폰트 건너뛰기 시험 (임시 HOME)
+    ├── test-windows-paths.sh      # Git Bash 거부·WSL 폰트 건너뛰기 시험 (임시 HOME)
+    └── test-windows-git.sh        # windows/·gitbash/ 정적 시험 (인코딩·줄바꿈·문법)
 ```
 
 ## 설치
@@ -79,6 +88,68 @@ chsh -s "$(command -v zsh)"
 2. Windows Terminal → 설정 → 해당 WSL 프로필 → 모양 → 글꼴에서 `JetBrainsMono Nerd Font` 를 지정. VS Code 통합 터미널은 `terminal.integrated.fontFamily` 에 같은 이름을 넣는다.
 
 Windows 사용자 프로필은 WSL 의 `$HOME` 밖이라 스크립트가 자동으로 설치하지 않는다(되돌리기와 임시 `HOME` 시험이 성립하지 않는다). 나머지 단계(zshrc·starship·Claude statusline·Codex status line)는 일반 Linux 와 같고, Claude Code·Codex 도 WSL 안에 설치해 쓴다. `uninstall.sh` 는 WSL 에서도 그대로 동작한다 — 폰트는 마커·manifest 가 없으므로 건드릴 것이 없다.
+
+## Windows 폐쇄망 (Git Bash)
+
+인터넷과 WSL2 를 쓸 수 없는 Windows(사내 폐쇄망 등)에서는 zsh 환경 대신 **Git for Windows 와 Git Bash** 만 맞춘다. `install.sh` 는 쓰지 않고 `windows/` 의 PowerShell 스크립트를 PowerShell 또는 cmd 에서 실행한다. 관리자 권한이 없어도 된다.
+
+### 반입할 것
+
+인터넷이 되는 PC 에서 둘을 받아 USB 등으로 옮긴다.
+
+1. 이 저장소 — GitHub 의 Code → Download ZIP (폐쇄망 PC 에는 아직 git 이 없다). 압축을 푼다.
+2. Git for Windows 64비트 설치 파일 하나 — [git-scm.com/downloads/win](https://git-scm.com/downloads/win) 또는 [릴리스 페이지](https://github.com/git-for-windows/git/releases/latest).
+   - `Git-<버전>-64-bit.exe` (설치형, 권장) — 시작 메뉴·탐색기 "Git Bash Here"·앱 제거 목록까지 갖춰진다.
+   - `PortableGit-<버전>-64-bit.7z.exe` (포터블) — 압축만 풀므로 소프트웨어 설치가 막힌 PC 에서 쓴다.
+   - 릴리스 페이지의 SHA-256 값도 적어 둔다(스크립트가 출력하는 값과 대조).
+
+받은 설치 파일은 압축을 푼 저장소의 `windows\offline\` 에 둔다(없으면 만든다. `.gitignore` 대상). 다른 곳에 두면 `-Installer` 로 지정한다.
+
+### 실행
+
+```bat
+:: cmd
+cd <압축을 푼 경로>\dotfiles
+windows\install-git.cmd
+```
+
+```powershell
+# PowerShell
+cd <압축을 푼 경로>\dotfiles
+powershell -ExecutionPolicy Bypass -File windows\install-git.ps1
+# 옵션: -Installer <경로>  -Scope Machine(관리자, 모든 사용자)  -PortableDir <경로>  -SkipBashrc
+```
+
+`install-git.ps1` 동작 (스크립트 내 섹션 번호와 동일):
+
+| # | 단계 | 내용 |
+|---|---|---|
+| 0 | 사전 검사 | 설치 파일을 `-Installer` → `windows\offline\` → `windows\` → `~\Downloads` 순으로 찾는다(설치형 우선, 높은 버전 우선). Authenticode 서명이 없거나 내용이 서명과 다르면 중단, 그 밖의 상태(폐쇄망이라 폐기 목록 확인 불가 등)는 경고하고 SHA-256 을 출력한다. `-Scope Machine` 인데 관리자가 아니거나 포터블 경로가 비어 있지 않아도 중단. 여기서 멈추면 **아무것도 바꾸지 않는다.** |
+| 1 | Git 설치 | Git 이 이미 있으면(레지스트리·포터블 경로·PATH) 건너뛴다. 설치형은 `/VERYSILENT /CURRENTUSER`(관리자 불필요, `%LOCALAPPDATA%\Programs\Git`) 무인 설치 — `PathOption=Cmd`(git 만 PATH 에), `CURLOption=WinSSL`(Windows 인증서 저장소 사용 → 사내 CA 로 서명된 내부 Git 서버 접속). 포터블은 `%LOCALAPPDATA%\Programs\PortableGit` 에 압축을 풀고 `post-install.bat` 을 돌린다. |
+| 2 | PATH | `<Git>\cmd` 가 사용자·시스템 PATH 어디에도 없을 때만(포터블 등) 사용자 PATH 에 추가. 새로 여는 cmd/PowerShell 창부터 `git` 이 잡힌다. |
+| 3 | Git Bash 실행 경로 | Windows Terminal 이 있으면 fragment(`%LOCALAPPDATA%\Microsoft\Windows Terminal\Fragments\dotfiles-gitbash\`)로 'Git Bash' 프로필을 추가(`settings.json` 은 건드리지 않는다). 포터블은 시작 메뉴 바로가기 `Git Bash (Portable)` 를 만든다. |
+| 4 | bashrc | `gitbash/bashrc` → `~/.bashrc`, `gitbash/bash_profile` → `~/.bash_profile` (내용이 다를 때만 `.bak` 백업 후, 최초 원본은 `~/.dotfiles-backup/gitbash-*.orig`/`.absent`). |
+| 5 | 확인 | `git --version` 과 Git Bash 로 `~/.bashrc` 문법 검사. |
+
+설치 후 Git Bash 는 시작 메뉴 **Git Bash**, Windows Terminal 의 **Git Bash** 프로필, 탐색기 우클릭 **Open Git Bash here**(설치형) 중 하나로 연다. cmd/PowerShell 에서는 새 창부터 `git` 을 쓸 수 있다.
+
+`~/.bashrc` 는 한글이 깨지지 않게 UTF-8 로케일을 쓰고, `git status` 등이 한글 경로를 `\355\225\234` 처럼 이스케이프하지 않게 `core.quotepath=false` 를 **환경변수로 이 셸에서만** 적용한다(`~/.gitconfig` 는 건드리지 않는다). 히스토리·alias(`ll`, `gs`, `gl`, `open` 등)를 두고, `starship`·`zoxide` 는 설치돼 있을 때만 켠다 — 없으면 Git Bash 기본 프롬프트(브랜치 표시)를 쓴다. 머신별 alias·시크릿은 `~/.bashrc.local`(미추적, 스크립트가 만들지 않음)에 둔다.
+
+주의:
+
+- 그룹 정책이 PowerShell 실행 정책을 `MachinePolicy` 로 고정하면 `-ExecutionPolicy Bypass` 도 무시된다. 그때는 설치 파일을 직접 실행해 Git 을 깔고, `-Installer` 없이 스크립트를 다시 돌리면 1 단계를 건너뛰고 Git Bash 환경만 맞춘다(스크립트 실행 자체가 막히면 `gitbash/bashrc`·`bash_profile` 을 홈에 직접 복사).
+- 설치형이 사용자 단위 설치 중에도 UAC(관리자) 창을 띄우거나 실패하면(PC 정책에 따라 다르다) `PortableGit-<버전>-64-bit.7z.exe` 를 대신 반입해 같은 명령을 돌린다 — 압축 해제뿐이라 권한이 필요 없다.
+- Git 을 새 버전으로 올리려면 새 `Git-<버전>-64-bit.exe` 를 직접 실행한다(설치형은 제자리 업그레이드). 스크립트는 Git 이 이미 있으면 설치를 건너뛴다.
+- 저장소 `.gitattributes` 가 `.ps1`/`.cmd` 는 CRLF 그대로, 나머지는 LF 로 고정한다. `gitbash/bashrc` 가 CRLF 로 바뀌면 bash 가 읽지 못하므로 편집기에서 줄바꿈을 바꾸지 않는다.
+- zsh·starship·Claude/Codex statusline 은 이 경로에 포함되지 않는다. 폐쇄망에서도 WSL2 를 쓸 수 있으면 [Windows (WSL2)](#windows-wsl2) 를 따른다.
+
+되돌리기:
+
+```bat
+windows\uninstall-git.cmd            :: ~/.bashrc·~/.bash_profile 복원, 프로필·바로가기·추가한 PATH 제거
+windows\uninstall-git.cmd -Purge     :: 위에 더해 install-git 이 새로 설치한 Git 까지 제거 (원래 있던 Git 은 유지)
+windows\uninstall-git.cmd -KeepBackup
+```
 
 ## 되돌리기 (uninstall.sh)
 

@@ -41,7 +41,7 @@ die()  { printf '\033[1;31m[install] 오류:\033[0m %s\n' "$*" >&2; exit 1; }
 # 여기서 실패하면 ~/.dotfiles-backup 을 포함해 아무것도 만들거나 바꾸지 않는다.
 case "$OS" in
   MINGW*|MSYS*|CYGWIN*)
-    die "Git Bash/MSYS/Cygwin 은 지원하지 않음 (zsh·패키지 매니저 없음) — WSL2 를 설치(wsl --install)하고 그 안에서 실행 (홈 파일은 변경하지 않았음)" ;;
+    die "Git Bash/MSYS/Cygwin 은 지원하지 않음 (zsh·패키지 매니저 없음) — WSL2 를 설치(wsl --install)하고 그 안에서 실행. WSL2 를 쓸 수 없는 폐쇄망은 windows\\install-git.cmd 로 Git Bash 환경만 구성 (홈 파일은 변경하지 않았음)" ;;
 esac
 missing=()
 for cmd in curl unzip python3; do command -v "$cmd" >/dev/null || missing+=("$cmd"); done
