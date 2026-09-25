@@ -69,7 +69,7 @@ cd dotfiles && ./install.sh
 
 멱등(idempotent): 재실행해도 안전하다. 배치 대상 파일(`starship.toml`·`.zshrc`·`statusline-command.sh`(Claude·Antigravity)·`~/.codex/cost-hook.py`)은 기존 파일과 내용이 다를 때만 `.bak` 백업 후 덮어쓴다 — `.bak` 은 1세대만 유지되므로 두 번 연속 다른 내용을 배치하면 첫 백업은 사라진다.
 
-최초 실행 시 덮어쓸 파일의 원본과 설치 기록을 `~/.dotfiles-backup/` 에 남긴다(`<name>.orig` / `<name>.absent`, `brew-installed.txt`·`pkg-installed.txt`·`bin-installed.txt`, `settings.json.orig`, `codex-config.toml.orig`, `codex-hooks.json.absent`/`.present`, `agy-settings.json.orig`/`.absent`). 재실행해도 이 기록은 갱신하지 않으므로 몇 번을 돌려도 "설치 전 원본"이 보존된다. Nerd Font 는 설치한 파일명을 `.nerd-font-<name>-files.txt` manifest 로 남긴다.
+최초 실행 시 덮어쓸 파일의 원본과 설치 기록을 `~/.config/dotfiles/backup/` 에 남긴다(`<name>.orig` / `<name>.absent`, `brew-installed.txt`·`pkg-installed.txt`·`bin-installed.txt`, `settings.json.orig`, `codex-config.toml.orig`, `codex-hooks.json.absent`/`.present`, `agy-settings.json.orig`/`.absent`). 재실행해도 이 기록은 갱신하지 않으므로 몇 번을 돌려도 "설치 전 원본"이 보존된다. Nerd Font 는 설치한 파일명을 `.nerd-font-<name>-files.txt` manifest 로 남긴다.
 
 `~/.claude/settings.json` 전체는 이 저장소에 두지 않는다 — permissions/hooks/model 등 머신별·보안 민감 설정 포함. statusline 스크립트와 해당 키 merge 만 관리.
 
@@ -135,7 +135,7 @@ powershell -ExecutionPolicy Bypass -File windows\install-git.ps1
 | 1 | Git 설치 | Git 이 이미 있으면(레지스트리·포터블 경로·PATH) 건너뛴다. 설치형은 `/VERYSILENT /CURRENTUSER`(관리자 불필요, `%LOCALAPPDATA%\Programs\Git`) 무인 설치 — `PathOption=Cmd`(git 만 PATH 에), `CURLOption=WinSSL`(Windows 인증서 저장소 사용 → 사내 CA 로 서명된 내부 Git 서버 접속). 포터블은 `%LOCALAPPDATA%\Programs\PortableGit` 에 압축을 풀고 `post-install.bat` 을 돌린다. |
 | 2 | PATH | `<Git>\cmd` 가 사용자·시스템 PATH 어디에도 없을 때만(포터블 등) 사용자 PATH 에 추가. 새로 여는 cmd/PowerShell 창부터 `git` 이 잡힌다. |
 | 3 | Git Bash 실행 경로 | Windows Terminal 이 있으면 fragment(`%LOCALAPPDATA%\Microsoft\Windows Terminal\Fragments\dotfiles-gitbash\`)로 'Git Bash' 프로필을 추가(`settings.json` 은 건드리지 않는다). 포터블은 시작 메뉴 바로가기 `Git Bash (Portable)` 를 만든다. |
-| 4 | bashrc | `gitbash/bashrc` → `~/.bashrc`, `gitbash/bash_profile` → `~/.bash_profile` (내용이 다를 때만 `.bak` 백업 후, 최초 원본은 `~/.dotfiles-backup/gitbash-*.orig`/`.absent`). |
+| 4 | bashrc | `gitbash/bashrc` → `~/.bashrc`, `gitbash/bash_profile` → `~/.bash_profile` (내용이 다를 때만 `.bak` 백업 후, 최초 원본은 `~/.config/dotfiles/backup/gitbash-*.orig`/`.absent`). |
 | 5 | 확인 | `git --version` 과 Git Bash 로 `~/.bashrc` 문법 검사. |
 
 설치 후 Git Bash 는 시작 메뉴 **Git Bash**, Windows Terminal 의 **Git Bash** 프로필, 탐색기 우클릭 **Open Git Bash here**(설치형) 중 하나로 연다. cmd/PowerShell 에서는 새 창부터 `git` 을 쓸 수 있다.
@@ -163,10 +163,10 @@ windows\uninstall-git.cmd -KeepBackup
 ```bash
 ./uninstall.sh            # 배치 파일 복원/제거 + settings.json statusLine(Claude·Antigravity)·Codex status_line 키 복원·비용 훅 제거 + Nerd Font 제거
 ./uninstall.sh --purge    # 위에 더해 install.sh 가 새로 설치한 brew/dnf/apt 패키지·starship 바이너리 제거
-./uninstall.sh --keep-backup   # ~/.dotfiles-backup 을 남김 (기본은 복원 후 삭제)
+./uninstall.sh --keep-backup   # ~/.config/dotfiles/backup 을 남김 (기본은 복원 후 삭제)
 ```
 
-- 복원 우선순위: `~/.dotfiles-backup/<name>.orig` 가 있으면 그 내용으로, `.absent` 면 삭제, 둘 다 없으면(이 기록 방식 이전에 설치한 머신) `.bak` 이 있을 때 `.bak` 으로, 없으면 삭제.
+- 복원 우선순위: `~/.config/dotfiles/backup/<name>.orig` 가 있으면 그 내용으로, `.absent` 면 삭제, 둘 다 없으면(이 기록 방식 이전에 설치한 머신) `.bak` 이 있을 때 `.bak` 으로, 없으면 삭제.
 - `settings.json` 은 `statusLine` 키만 설치 전 값으로 되돌리고 다른 키(permissions/hooks/model 등)는 그대로 둔다. 설치 전에 파일이 없었고 남는 키도 없으면 파일 자체를 지운다. 쓰기는 install 과 같은 원자적 교체이며, 깨진 JSON 이면 손대지 않고 중단한다.
 - `~/.codex/config.toml` 도 `[tui]` 의 `status_line` 키만 설치 전 값으로 되돌린다. 설치 전에 키가 없었으면 키를 지우고, 그 결과 설치가 만든 `[tui]` 테이블이나 파일이 비면 같이 지운다. 설치가 Codex 단계를 건너뛴 머신에서는 아무것도 하지 않는다.
 - `~/.codex/hooks.json` 은 다른 도구도 자기 훅을 넣고 빼는 공유 파일이라 원본으로 통째 되돌리지 않고, 비용 훅 항목(`~/.codex/cost-hook.py` 를 가리키는 것)만 뺀다. 설치 전에 파일이 없었고 남는 훅도 없으면 파일을 지운다. `~/.codex/cost-hook.py` 는 다른 배치 파일과 같은 규칙으로 복원/삭제한다.

@@ -20,7 +20,7 @@
 #   5. 확인 — git --version, Git Bash 로 ~/.bashrc 문법 검사
 #
 # 멱등(idempotent): 재실행해도 안전하다. 배치 파일은 내용이 다를 때만 .bak 백업 후 덮어쓴다.
-# 되돌리기: windows\uninstall-git.ps1 — ~\.dotfiles-backup\gitbash-* 기록을 기준으로 복원한다.
+# 되돌리기: windows\uninstall-git.ps1 — ~\.config\dotfiles\backup\gitbash-* 기록을 기준으로 복원한다.
 #   - gitbash-<name>.orig / .absent : 배치 전 원본 / 원래 없었다는 표시 (최초 1회만 기록)
 #   - gitbash-git-installed.txt     : 이 스크립트가 새로 설치한 Git (mode·경로). 원래 있던 Git 은 기록하지 않는다
 #   - gitbash-path-added.txt        : 이 스크립트가 사용자 PATH 에 추가한 항목
@@ -45,7 +45,7 @@ function Die([string]$m)  { Write-Host "[install-git] 오류: $m" -ForegroundCol
 
 $RepoRoot   = Split-Path -Parent $PSScriptRoot
 $HomeDir    = if ($env:HOME) { $env:HOME } else { $env:USERPROFILE }
-$BackupDir  = Join-Path $HomeDir '.dotfiles-backup'
+$BackupDir  = Join-Path $HomeDir '.config\dotfiles\backup'
 $WtFragment = Join-Path $env:LOCALAPPDATA 'Microsoft\Windows Terminal\Fragments\dotfiles-gitbash\git-bash.json'
 $StartMenuLnk = Join-Path $env:APPDATA 'Microsoft\Windows\Start Menu\Programs\Git Bash (Portable).lnk'
 $Deploys = @(
@@ -85,7 +85,7 @@ function Test-Admin {
 }
 
 # ── 0. 사전 검사 (변경 전) ───────────────────────────────
-# 여기서 실패하면 ~\.dotfiles-backup 을 포함해 아무것도 만들거나 바꾸지 않는다.
+# 여기서 실패하면 ~\.config\dotfiles\backup 을 포함해 아무것도 만들거나 바꾸지 않는다.
 if ([Environment]::OSVersion.Platform -ne 'Win32NT') { Die 'Windows 전용 스크립트 — macOS/Linux/WSL 은 ./install.sh 를 쓴다' }
 if (-not [Environment]::Is64BitOperatingSystem) { Die '64비트 Windows 만 지원 (Git for Windows 32비트 배포는 중단됨)' }
 if (-not (Test-Path $HomeDir)) { Die "홈 디렉터리 없음: $HomeDir" }
@@ -135,6 +135,13 @@ if ($GitRoot) {
   }
 }
 
+# 이전 버전이 쓰던 ~\.dotfiles-backup 이 남아 있으면 새 위치로 옮긴다
+$LegacyBackupDir = Join-Path $HomeDir '.dotfiles-backup'
+if ((Test-Path $LegacyBackupDir) -and -not (Test-Path $BackupDir)) {
+  New-Item -ItemType Directory -Force -Path (Split-Path -Parent $BackupDir) | Out-Null
+  Move-Item -LiteralPath $LegacyBackupDir -Destination $BackupDir
+  Info "~\.dotfiles-backup -> $BackupDir 이동"
+}
 New-Item -ItemType Directory -Force -Path $BackupDir | Out-Null
 
 function Write-Utf8NoBom([string]$path, [string]$text) {

@@ -86,7 +86,7 @@ reject() {              # reject <이름> <내용>
   if run "$1" check 2>/dev/null; then echo "FAIL $1: check 가 통과함"; fail=1; fi
   if run "$1" apply >/dev/null 2>&1; then echo "FAIL $1: apply 가 통과함"; fail=1; fi
   [ "$(cat "$T/$1/.codex/hooks.json")" = "$2" ] || { echo "FAIL $1: 실패했는데 파일이 바뀜"; fail=1; }
-  [ ! -e "$T/$1/.dotfiles-backup" ] || { echo "FAIL $1: 실패했는데 백업 디렉터리가 생김"; fail=1; }
+  [ ! -e "$T/$1/.config/dotfiles/backup" ] || { echo "FAIL $1: 실패했는데 백업 디렉터리가 생김"; fail=1; }
   echo "ok   $1 (거부)"
 }
 reject broken '{"hooks": {'

@@ -3,7 +3,7 @@
 
 사용법 (install.sh / uninstall.sh 가 호출):
   settings.py check     # 쓰지 않고 apply 가 가능한지만 검사 (깨진 JSON·최상위가 객체가 아니면 exit 1)
-  settings.py apply     # statusLine 을 이 저장소 스크립트로 맞춘다. 최초 1회 설치 전 상태를 ~/.dotfiles-backup 에 기록
+  settings.py apply     # statusLine 을 이 저장소 스크립트로 맞춘다. 최초 1회 설치 전 상태를 ~/.config/dotfiles/backup 에 기록
   settings.py restore   # statusLine 만 설치 전 값으로 되돌린다. 설치 전에 없던 파일이고 남은 키가 없으면 파일도 지운다
 
 statusLine 외의 키(모델·권한 등)는 읽기만 한다. statusLine 안에서도 type/command/enabled 만 맞추고
@@ -17,7 +17,7 @@ HOME = os.path.expanduser("~")
 DIR = os.path.join(HOME, ".gemini", "antigravity-cli")
 SETTINGS = os.path.join(DIR, "settings.json")
 SCRIPT = os.path.join(DIR, "statusline-command.sh")
-BACKUP = os.path.join(HOME, ".dotfiles-backup")
+BACKUP = os.path.join(HOME, ".config", "dotfiles", "backup")
 ORIG = os.path.join(BACKUP, "agy-settings.json.orig")
 ABSENT = os.path.join(BACKUP, "agy-settings.json.absent")
 WANT = {"type": "command", "command": f"bash {SCRIPT}", "enabled": True}

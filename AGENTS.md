@@ -48,7 +48,7 @@
 | `scripts/test-windows-paths.sh` | — | Git Bash 거부(어느 OS 에서나)와 WSL 폰트 건너뛰기(Linux 에서만) 시험 |
 | `.gitignore` | — | 머신별·시크릿 파일명 차단 |
 
-홈에 생기는 부산물: `~/.dotfiles-backup/`(원본 기록과 설치 manifest), 배치 대상 옆의 `*.bak`(1세대), 폰트 디렉터리의 `.nerd-font-<name>-installed` 마커와 `.nerd-font-<name>-files.txt` manifest.
+홈에 생기는 부산물: `~/.config/dotfiles/backup/`(원본 기록과 설치 manifest), 배치 대상 옆의 `*.bak`(1세대), 폰트 디렉터리의 `.nerd-font-<name>-installed` 마커와 `.nerd-font-<name>-files.txt` manifest.
 
 ## 추적 범위 — 가장 중요한 규칙
 
@@ -72,7 +72,7 @@
 ## 불변 규칙 (스크립트를 고칠 때)
 
 - **멱등**: `install.sh`·`uninstall.sh` 는 몇 번을 재실행해도 결과가 같아야 한다. 패키지는 없을 때만 설치하고, 파일은 내용이 다를 때만 덮어쓴다.
-- **실패는 변경 전에**: 의존성 검사(0 단계)에서 실패하면 `~/.dotfiles-backup` 을 포함해 홈에 아무것도 만들지 않는다. 새 전제 조건은 0 단계에 추가한다.
+- **실패는 변경 전에**: 의존성 검사(0 단계)에서 실패하면 `~/.config/dotfiles/backup` 을 포함해 홈에 아무것도 만들지 않는다. 새 전제 조건은 0 단계에 추가한다.
 - **덮어쓰기 전 백업**: 홈 파일 배치는 반드시 `deploy_file` 을 거친다(최초 원본을 `.orig`/`.absent` 로 기록 → 내용이 다르면 `.bak` → 복사). `cp` 직접 호출 금지. 최초 기록은 재실행 때 갱신하지 않는다.
 - **`settings.json` 은 키 단위 merge**: `statusLine` 외의 키를 읽거나 바꾸지 않는다. 쓰기는 같은 디렉터리의 임시 파일 + `os.replace` 로 원자적으로, 기존 mode 를 보존한다. 깨진 JSON 이면 손대지 않고 중단한다.
 - **`config.toml` 도 키 단위 merge**: `[tui]` 의 `status_line` 외에는 읽거나 바꾸지 않는다. TOML writer 가 없으므로 그 키의 줄만 교체하고 나머지는 바이트 그대로 둔다. `tomllib` 이 있으면 쓰기 전에 "`status_line` 외에는 같다"를 검증하고, 깨진 TOML·미지원 표기면 손대지 않고 중단한다. `install.sh` 와 `uninstall.sh` 가 같은 파서를 쓰도록 로직은 `codex/status-line.py` 한 곳에만 둔다. Codex 를 쓰지 않는 머신에서는 `~/.codex` 를 만들지 않는다.
