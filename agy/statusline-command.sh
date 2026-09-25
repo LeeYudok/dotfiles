@@ -106,9 +106,9 @@ if [ -z "$branch" ] && [ -z "$vcs_type" ] && [ -n "$cwd" ] \
 fi
 if [ -n "$branch" ]; then
   if [ -n "$dirty" ]; then
-    git_part="${SEP}${FG_GIT_DIRTY}\xe2\x8e\x87 ${branch} \xe2\x97\x8f${RESET}"
+    git_part="${SEP}${FG_GIT_DIRTY}git: ${branch} *${RESET}"
   else
-    git_part="${SEP}${FG_GIT_CLEAN}\xe2\x8e\x87 ${branch}${RESET}"
+    git_part="${SEP}${FG_GIT_CLEAN}git: ${branch}${RESET}"
   fi
 fi
 
@@ -156,7 +156,7 @@ quota() {     # quota <라벨> <5h 사용률> <5h 리셋초> <주간 사용률> 
     u=$(int "$u"); [ "$u" -lt 0 ] && u=0
     if [ "$u" -ge 80 ]; then color="$FG_CRIT"; elif [ "$u" -ge 60 ]; then color="$FG_WARN"; else color="$FG_MUTE"; fi
     seg="${color}${name} ${u}%${RESET}"
-    r=$(left "$r"); [ -n "$r" ] && seg="${seg}${FG_MUTE}\xe2\x86\xba${r}${RESET}"
+    r=$(left "$r"); [ -n "$r" ] && seg="${seg}${FG_MUTE}~${r}${RESET}"
     [ -n "$out" ] && out="${out}  ${seg}" || out="$seg"
   done
   [ -n "$out" ] && printf '%s' "${FG_MUTE}$1 ${RESET}${out}"

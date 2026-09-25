@@ -82,8 +82,8 @@ if command -v jq >/dev/null; then
     "quota":{"gemini-5h":{"remaining_fraction":0.85,"reset_in_seconds":3600},"gemini-weekly":{"remaining_fraction":0.1,"reset_in_seconds":90000}},
     "task_count":2,"artifact_count":0,"subagents":["a","b"],"sandbox":{"enabled":true},"version":"1.2.3"}'
   got="$(printf '%s' "$payload" | bash agy/statusline-command.sh | sed 's/\x1b\[[0-9;]*m//g')"
-  want="proj │ ⎇ main ● │ Gemini 3.5 Flash working │ █░░░░░░░░░ 14% (88k/1048k) ↑61k
-G 5h 15%↺1h00m  7d 90%↺1d1h │ tasks 2 agents 2 │ sandbox │ v1.2.3"
+  want="proj │ git: main * │ Gemini 3.5 Flash working │ █░░░░░░░░░ 14% (88k/1048k) ↑61k
+G 5h 15%~1h00m  7d 90%~1d1h │ tasks 2 agents 2 │ sandbox │ v1.2.3"
   [ "$got" = "$want" ] || { bad "render: 출력이 기대와 다름"; printf '%s\n---\n%s\n' "$want" "$got"; }
   for input in '{}' 'not json' '{"context_window":{"used_percentage":"error"},"quota":{"gemini-5h":{"remaining_fraction":"x"}}}'; do
     out="$(printf '%s' "$input" | bash agy/statusline-command.sh 2>&1)" || bad "render: '$input' 에서 exit != 0"
