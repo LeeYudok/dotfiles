@@ -2,7 +2,7 @@
 # dotfiles uninstall — install.sh 가 적용한 것을 되돌려 설치 전 zsh 상태로 복원
 #
 # 사용법:
-#   ./uninstall.sh            # 배치 파일 복원/제거 + statusLine·Codex status_line 키 복원 + Nerd Font 제거
+#   ./uninstall.sh            # 배치 파일 복원/제거 + statusLine(Claude·Antigravity)·Codex status_line 키 복원 + Nerd Font 제거
 #   ./uninstall.sh --purge    # 위에 더해 install.sh 가 새로 설치한 패키지/바이너리까지 제거
 #   ./uninstall.sh --keep-backup   # ~/.dotfiles-backup 을 남겨둠 (기본은 복원 후 삭제)
 #
@@ -117,6 +117,13 @@ python3 codex/status-line.py restore
 python3 codex/hooks.py restore       # hooks.json 에서 비용 훅 항목만 제거 (다른 훅 불변)
 restore_file "$HOME/.codex/cost-hook.py" codex-cost-hook.py
 
+# ── 3.5. Antigravity CLI settings.json 의 statusLine 키만 복원 + 스크립트 복원/제거 ──
+# install.sh 가 agy 단계를 건너뛴 머신(기록 없음)에서는 아무것도 하지 않는다
+python3 agy/settings.py restore
+if [ -e "$BACKUP_DIR/agy-statusline-command.sh.orig" ] || [ -e "$BACKUP_DIR/agy-statusline-command.sh.absent" ]; then
+  restore_file "$HOME/.gemini/antigravity-cli/statusline-command.sh" agy-statusline-command.sh
+fi
+
 # ── 4. Nerd Fonts 제거 (manifest 에 기록된 파일만) ───────────
 if [ "$OS" = "Darwin" ]; then FONT_DIR="$HOME/Library/Fonts"; else FONT_DIR="$HOME/.local/share/fonts"; fi
 for name in JetBrainsMono D2Coding; do
@@ -170,6 +177,7 @@ else
 fi
 rmdir "$HOME/.claude" 2>/dev/null || true   # 비어 있을 때만 제거
 rmdir "$HOME/.codex" 2>/dev/null || true
+rmdir "$HOME/.gemini/antigravity-cli" "$HOME/.gemini" 2>/dev/null || true
 rmdir "$HOME/.config" 2>/dev/null || true
 rmdir "$FONT_DIR" 2>/dev/null || true
 

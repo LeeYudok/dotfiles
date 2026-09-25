@@ -1,6 +1,6 @@
 # dotfiles
 
-zsh + starship 셸 환경과 Claude Code statusline·Codex CLI status line 을 새 머신에 한 번에 맞추는 부트스트랩 저장소. macOS(Homebrew)와 Linux(dnf/apt), Windows(WSL2) 를 같은 `install.sh` 로 설치하고, `uninstall.sh` 로 설치 전 상태까지 되돌린다. WSL2 를 쓸 수 없는 폐쇄망 Windows 는 `windows/install-git.cmd` 로 Git 을 오프라인 설치하고 Git Bash 환경을 맞춘다 — [Windows 폐쇄망 (Git Bash)](#windows-폐쇄망-git-bash).
+zsh + starship 셸 환경과 Claude Code·Antigravity CLI statusline, Codex CLI status line 을 새 머신에 한 번에 맞추는 부트스트랩 저장소. macOS(Homebrew)와 Linux(dnf/apt), Windows(WSL2) 를 같은 `install.sh` 로 설치하고, `uninstall.sh` 로 설치 전 상태까지 되돌린다. WSL2 를 쓸 수 없는 폐쇄망 Windows 는 `windows/install-git.cmd` 로 Git 을 오프라인 설치하고 Git Bash 환경을 맞춘다 — [Windows 폐쇄망 (Git Bash)](#windows-폐쇄망-git-bash).
 
 어느 머신에나 그대로 적용할 수 있는 설정만 추적한다. 호스트 alias·내부 URL·API 키·개인 에이전트 지침처럼 머신이나 사람에 묶인 것은 저장소 밖(`~/.zshrc.local`, `~/.secrets.zsh`)에 둔다 — 자세한 경계는 [추적 범위](#추적-범위) 참고. 에이전트·기여자용 상세 규칙은 [AGENTS.md](AGENTS.md).
 
@@ -29,6 +29,9 @@ dotfiles/
 │   ├── install-git.cmd        # cmd 에서 위 스크립트 실행 (ExecutionPolicy Bypass)
 │   ├── uninstall-git.ps1      # install-git.ps1 의 역연산 (-Purge 로 설치한 Git 까지)
 │   └── uninstall-git.cmd      # cmd 에서 위 스크립트 실행
+├── agy/
+│   ├── statusline-command.sh  # Antigravity CLI(agy) 하단 statusline 2줄 (경로·git·모델·컨텍스트 / Gemini·3P 한도·작업·버전)
+│   └── settings.py            # ~/.gemini/antigravity-cli/settings.json 의 statusLine 키만 merge/복원
 ├── codex/
 │   ├── status-line.py         # Codex CLI status line — config.toml 의 [tui] status_line 키만 merge/복원
 │   ├── cost-hook.py           # Codex Stop 훅 — 턴마다 API 환산 비용 한 줄 표시 → ~/.codex/cost-hook.py
@@ -36,6 +39,7 @@ dotfiles/
 └── scripts/
     ├── test-codex-status-line.sh  # codex/status-line.py 왕복 시험 (임시 HOME)
     ├── test-codex-cost-hook.sh    # cost-hook.py 금액 계산 + hooks.py 왕복 시험 (임시 HOME)
+    ├── test-agy-statusline.sh     # agy/settings.py 왕복 + statusline 렌더 시험 (임시 HOME)
     ├── test-windows-paths.sh      # Git Bash 거부·WSL 폰트 건너뛰기 시험 (임시 HOME)
     └── test-windows-git.sh        # windows/·gitbash/ 정적 시험 (인코딩·줄바꿈·문법)
 ```
@@ -51,20 +55,21 @@ cd dotfiles && ./install.sh
 
 | # | 단계 | 내용 |
 |---|---|---|
-| 0 | 의존성 검사 | Git Bash/MSYS/Cygwin 이면 "WSL2 에서 실행" 안내와 함께 중단. `curl`·`unzip`·`python3`, macOS 는 `brew`, Linux 는 `dnf`/`apt-get` 이 없으면 **홈 파일을 하나도 만들지 않고** 종료. `~/.claude/settings.json` 이 깨진 JSON 이거나 `~/.codex/config.toml` 을 편집할 수 없는 상태(깨진 TOML 등)여도 여기서 중단. |
+| 0 | 의존성 검사 | Git Bash/MSYS/Cygwin 이면 "WSL2 에서 실행" 안내와 함께 중단. `curl`·`unzip`·`python3`, macOS 는 `brew`, Linux 는 `dnf`/`apt-get` 이 없으면 **홈 파일을 하나도 만들지 않고** 종료. `~/.claude/settings.json`·`~/.gemini/antigravity-cli/settings.json` 이 깨진 JSON 이거나 `~/.codex/config.toml` 을 편집할 수 없는 상태(깨진 TOML 등)여도 여기서 중단. |
 | 1 | 패키지 설치 | macOS: brew 로 `starship eza bat zoxide fzf fd jq zsh-autosuggestions zsh-syntax-highlighting` (없을 때만). Linux: `zsh`(dnf/apt), `starship`(공식 스크립트, sudo 없으면 `~/.local/bin`), 자동완성 플러그인 2종(dnf 는 EPEL 활성화 후), `jq`(sudo 가능할 때만, 아니면 경고). |
 | 2 | starship.toml | `starship/starship.toml` → `~/.config/starship.toml` |
 | 2.5 | Nerd Fonts | GitHub 최신 릴리스에서 `JetBrainsMono`, `D2Coding` zip 을 받아 `.ttf`/`.otf` 를 폰트 디렉터리(macOS `~/Library/Fonts`, Linux `~/.local/share/fonts` + `fc-cache`)에 설치. 폰트별 `.nerd-font-<name>-installed` 마커 파일로 재설치 방지. **WSL 에서는 건너뛰고 안내만** 한다 — [Windows (WSL2)](#windows-wsl2) 참고. |
 | 3 | zshrc | OS 에 맞는 `zsh/zshrc.*` → `~/.zshrc`. 머신별 alias/함수는 `~/.zshrc.local`(미추적) 에 두며 스크립트가 만들지 않는다 — 없으면 안내만. |
 | 4 | Claude statusline | `claude/statusline-command.sh` → `~/.claude/statusline-command.sh` (+x). 스크립트 런타임에 `jq` 필요 — 없으면 경고만. 이어서 **python3** 로 `~/.claude/settings.json` 의 `statusLine` 키만 merge (다른 키 불변, 파일 없으면 생성). 같은 디렉터리의 임시 파일에 쓰고 `os.replace` 로 교체하므로 중단돼도 원본이 깨지지 않고, 기존 파일 mode 를 보존한다. |
 | 5 | Codex status line | Codex 를 쓰는 머신(`codex` 명령 또는 `~/.codex` 존재)에서만. `codex/status-line.py apply` 로 `~/.codex/config.toml` 의 `[tui]` `status_line` 키만 merge (다른 테이블·키·주석 불변, 파일 없으면 생성). 비용 훅 `codex/cost-hook.py` 를 `~/.codex/cost-hook.py` 로 배치하고 `codex/hooks.py apply` 로 `~/.codex/hooks.json` 의 `Stop` 에 그 항목 하나만 추가한다(다른 훅 불변). 원자적 쓰기와 mode 보존은 4 단계와 같다. `hooks.json` 이 깨진 JSON 이면 0 단계에서 중단. |
-| 6 | 기본 셸 | `$SHELL` 이 zsh 가 아니면 `chsh -s <zsh 경로>` 안내만 (자동 변경 안 함). |
+| 6 | Antigravity statusline | Antigravity CLI 를 쓰는 머신(`agy` 명령 또는 `~/.gemini/antigravity-cli` 존재)에서만. `agy/statusline-command.sh` → `~/.gemini/antigravity-cli/statusline-command.sh` (+x) 배치 후 `agy/settings.py apply` 로 `settings.json` 의 `statusLine` 키만 merge (다른 키 불변, 사용자가 둔 `padding`·`stack_with_default` 도 유지). 원자적 쓰기와 mode 보존은 4 단계와 같다. |
+| 7 | 기본 셸 | `$SHELL` 이 zsh 가 아니면 `chsh -s <zsh 경로>` 안내만 (자동 변경 안 함). |
 
-런타임 의존성: `curl`, `unzip`, `python3`(0 단계에서 검사). macOS 는 Homebrew 필수. Windows 는 WSL2 안에서 실행한다. `jq` 는 statusline 스크립트 런타임 전용이라 1 단계에서 자동 설치한다(Linux 는 sudo 가능할 때만).
+런타임 의존성: `curl`, `unzip`, `python3`(0 단계에서 검사). macOS 는 Homebrew 필수. Windows 는 WSL2 안에서 실행한다. `jq` 는 statusline 스크립트(Claude·Antigravity) 런타임 전용이라 1 단계에서 자동 설치한다(Linux 는 sudo 가능할 때만).
 
-멱등(idempotent): 재실행해도 안전하다. 배치 대상 파일(`starship.toml`·`.zshrc`·`statusline-command.sh`·`~/.codex/cost-hook.py`)은 기존 파일과 내용이 다를 때만 `.bak` 백업 후 덮어쓴다 — `.bak` 은 1세대만 유지되므로 두 번 연속 다른 내용을 배치하면 첫 백업은 사라진다.
+멱등(idempotent): 재실행해도 안전하다. 배치 대상 파일(`starship.toml`·`.zshrc`·`statusline-command.sh`(Claude·Antigravity)·`~/.codex/cost-hook.py`)은 기존 파일과 내용이 다를 때만 `.bak` 백업 후 덮어쓴다 — `.bak` 은 1세대만 유지되므로 두 번 연속 다른 내용을 배치하면 첫 백업은 사라진다.
 
-최초 실행 시 덮어쓸 파일의 원본과 설치 기록을 `~/.dotfiles-backup/` 에 남긴다(`<name>.orig` / `<name>.absent`, `brew-installed.txt`·`pkg-installed.txt`·`bin-installed.txt`, `settings.json.orig`, `codex-config.toml.orig`, `codex-hooks.json.absent`/`.present`). 재실행해도 이 기록은 갱신하지 않으므로 몇 번을 돌려도 "설치 전 원본"이 보존된다. Nerd Font 는 설치한 파일명을 `.nerd-font-<name>-files.txt` manifest 로 남긴다.
+최초 실행 시 덮어쓸 파일의 원본과 설치 기록을 `~/.dotfiles-backup/` 에 남긴다(`<name>.orig` / `<name>.absent`, `brew-installed.txt`·`pkg-installed.txt`·`bin-installed.txt`, `settings.json.orig`, `codex-config.toml.orig`, `codex-hooks.json.absent`/`.present`, `agy-settings.json.orig`/`.absent`). 재실행해도 이 기록은 갱신하지 않으므로 몇 번을 돌려도 "설치 전 원본"이 보존된다. Nerd Font 는 설치한 파일명을 `.nerd-font-<name>-files.txt` manifest 로 남긴다.
 
 `~/.claude/settings.json` 전체는 이 저장소에 두지 않는다 — permissions/hooks/model 등 머신별·보안 민감 설정 포함. statusline 스크립트와 해당 키 merge 만 관리.
 
@@ -156,7 +161,7 @@ windows\uninstall-git.cmd -KeepBackup
 ## 되돌리기 (uninstall.sh)
 
 ```bash
-./uninstall.sh            # 배치 파일 복원/제거 + settings.json statusLine·Codex status_line 키 복원·비용 훅 제거 + Nerd Font 제거
+./uninstall.sh            # 배치 파일 복원/제거 + settings.json statusLine(Claude·Antigravity)·Codex status_line 키 복원·비용 훅 제거 + Nerd Font 제거
 ./uninstall.sh --purge    # 위에 더해 install.sh 가 새로 설치한 brew/dnf/apt 패키지·starship 바이너리 제거
 ./uninstall.sh --keep-backup   # ~/.dotfiles-backup 을 남김 (기본은 복원 후 삭제)
 ```
@@ -165,6 +170,7 @@ windows\uninstall-git.cmd -KeepBackup
 - `settings.json` 은 `statusLine` 키만 설치 전 값으로 되돌리고 다른 키(permissions/hooks/model 등)는 그대로 둔다. 설치 전에 파일이 없었고 남는 키도 없으면 파일 자체를 지운다. 쓰기는 install 과 같은 원자적 교체이며, 깨진 JSON 이면 손대지 않고 중단한다.
 - `~/.codex/config.toml` 도 `[tui]` 의 `status_line` 키만 설치 전 값으로 되돌린다. 설치 전에 키가 없었으면 키를 지우고, 그 결과 설치가 만든 `[tui]` 테이블이나 파일이 비면 같이 지운다. 설치가 Codex 단계를 건너뛴 머신에서는 아무것도 하지 않는다.
 - `~/.codex/hooks.json` 은 다른 도구도 자기 훅을 넣고 빼는 공유 파일이라 원본으로 통째 되돌리지 않고, 비용 훅 항목(`~/.codex/cost-hook.py` 를 가리키는 것)만 뺀다. 설치 전에 파일이 없었고 남는 훅도 없으면 파일을 지운다. `~/.codex/cost-hook.py` 는 다른 배치 파일과 같은 규칙으로 복원/삭제한다.
+- `~/.gemini/antigravity-cli/settings.json` 도 `statusLine` 키만 설치 전 값으로 되돌린다(설치 전에 없던 파일이고 남는 키가 없으면 파일 삭제). 스크립트는 다른 배치 파일과 같은 규칙으로 복원/삭제하고, 비게 된 `~/.gemini/antigravity-cli`·`~/.gemini` 는 지운다. 설치가 agy 단계를 건너뛴 머신에서는 아무것도 하지 않는다.
 - `~/.zshrc.local`, `~/.secrets.zsh`, `~/.claude/CLAUDE.md` 는 사용자 파일이므로 건드리지 않는다.
 - 폰트는 manifest 에 적힌 파일만 지운다. manifest 없이 설치된 옛 머신은 마커만 지우고 경고를 낸다.
 - `--purge` 는 `install.sh` 가 **새로 설치했다고 기록한 것만** 제거한다. 이미 깔려 있던 starship/eza 등은 건드리지 않는다.
@@ -214,6 +220,24 @@ $1.51 5m(api 1m) │ cache 95% │ 5h 16%↺12:00  7d 48%↺05:00 │ Proactive 
 
 `install.sh` 는 스크립트를 배치하고 `~/.claude/settings.json` 의 `statusLine` 키 하나만 merge 한다. `settings.json` 전체와 `~/.claude/CLAUDE.md` 같은 개인 지침은 이 저장소가 관리하지 않는다.
 
+## Antigravity CLI statusline
+
+Antigravity CLI(`agy`)는 Claude Code 와 같은 방식이다 — 에이전트 상태가 바뀔 때마다 `settings.json` 의 `statusLine.command` 를 실행해 상태 JSON 을 stdin 으로 넘기고, stdout 을 프롬프트 아래에 그린다. `agy/statusline-command.sh` 는 Claude statusline 과 같은 모양·색으로 **두 줄**을 출력한다. 런타임에 `jq` 가 필요하다.
+
+| 줄 | 내용 |
+|---|---|
+| 1행 | 경로 · git 브랜치/dirty(payload 의 `vcs`, 없으면 git 으로 확인) · 모델명 · 에이전트 상태(`idle` 은 생략) · 컨텍스트 사용률 바와 입력/창 크기 · 출력 토큰 |
+| 2행 | Gemini 모델 5시간/주간 사용률과 리셋까지 남은 시간(`G`) · 타사 모델 한도(`3P`) · 작업·산출물·서브에이전트 수 · sandbox(+net) · vim 모드 · CLI 버전 |
+
+```
+proj │ ⎇ main ● │ Gemini 3.5 Flash working │ █░░░░░░░░░ 14% (88k/1048k) ↑61k
+G 5h 15%↺1h00m  7d 90%↺1d1h │ tasks 2 agents 2 │ sandbox │ v1.2.3
+```
+
+- 한도는 payload 에 남은 비율(`quota["gemini-5h"].remaining_fraction` 등)로 오지만 Claude statusline 과 맞춰 **사용률**(100 − 남은 %)로 보여주고, 60%/80% 에서 색이 바뀐다. 값이 없는 한도·0 인 개수는 칸째 생략한다.
+- 설정 파일은 `~/.gemini/antigravity-cli/settings.json`, 키는 camelCase `statusLine` 이다(`statusline` 은 무시된다). `install.sh` 는 `{"type": "command", "command": "bash ~/.gemini/antigravity-cli/statusline-command.sh", "enabled": true}` 로 맞추고, 사용자가 넣은 `padding`·`stack_with_default`(기본 줄 아래에 붙이기)는 그대로 둔다. Antigravity 안에서 `/statusline` 으로 바꾼 값은 `install.sh` 재실행 때 덮어쓴다.
+- `settings.json` 의 나머지(모델·권한 등)는 이 저장소가 관리하지 않는다.
+
 ## Codex CLI status line
 
 Codex CLI 는 Claude Code 와 달리 **외부 명령을 실행하는 status line 이 없다.** `~/.codex/config.toml` 의 `[tui]` 테이블에 내장 항목 ID 배열을 적는 방식만 지원하므로, 스크립트를 배치하는 대신 그 키 하나를 맞춘다.
@@ -253,7 +277,7 @@ API 환산 $1.23 · 이번 턴 +$0.04 · 입력 1.4M(캐시 90%) · 출력 11.3k
 | OS 별 zshrc (도구가 있을 때만 켜지는 구조) | 머신별 alias/함수 → `~/.zshrc.local`, Git Bash 는 `~/.bashrc.local` |
 | Git Bash 용 `bashrc`·`bash_profile`, 폐쇄망 Git 설치/제거 스크립트 | Git for Windows 설치 파일(`windows/offline/`) |
 | placeholder 로만 채운 `zshrc.local.example` | API 키·토큰 → `~/.secrets.zsh` (mode 600) |
-| statusline 스크립트, Codex `status_line` 항목 구성·비용 훅 | `~/.claude/settings.json`·`~/.codex/config.toml`·`~/.codex/hooks.json` 전체, 개인 `CLAUDE.md` |
+| statusline 스크립트(Claude·Antigravity), Codex `status_line` 항목 구성·비용 훅 | `~/.claude/settings.json`·`~/.gemini/antigravity-cli/settings.json`·`~/.codex/config.toml`·`~/.codex/hooks.json` 전체, 개인 `CLAUDE.md` |
 | 설치/제거 스크립트와 문서 | 머신별 적용 현황, 백업 파일(`*.bak`) |
 
 `.gitignore` 가 오른쪽 열의 파일명을 막아 두지만, 템플릿이나 문서에 실제 값을 적는 실수는 막지 못한다. 커밋 전에 `git diff --cached` 로 호스트명·IP·URL 이 들어가지 않았는지 확인한다.
@@ -264,7 +288,7 @@ API 환산 $1.23 · 이번 턴 +$0.04 · 입력 1.4M(캐시 90%) · 출력 11.3k
 
 ## 갱신 규칙
 
-- 로컬에서 `~/.zshrc` / `~/.config/starship.toml` / `~/.claude/statusline-command.sh` / `~/.codex/cost-hook.py` / (Git Bash) `~/.bashrc` 를 바꾸면 이 저장소에도 반영해 커밋한다.
+- 로컬에서 `~/.zshrc` / `~/.config/starship.toml` / `~/.claude/statusline-command.sh` / `~/.gemini/antigravity-cli/statusline-command.sh` / `~/.codex/cost-hook.py` / (Git Bash) `~/.bashrc` 를 바꾸면 이 저장소에도 반영해 커밋한다.
 - 머신별 일회성 설정(특정 호스트 alias 등)은 `~/.zshrc.local` 에 두고 저장소 zshrc 에는 넣지 않는다. 공통화 가능한 것만 양쪽 zshrc 에 반영.
 - `install.sh` 에 단계를 추가하면 헤더 주석과 이 README 의 단계 표를 같이 고친다. 홈에 뭔가를 새로 만들면 `uninstall.sh` 에 그 역연산도 같이 넣는다. `windows/install-git.ps1` 과 `uninstall-git.ps1` 도 같은 관계다.
 - `windows/*.ps1` 은 UTF-8 BOM·CRLF, `*.cmd` 는 ASCII·CRLF 로 저장한다(Windows PowerShell 5.1·cmd.exe 가 한글·LF 를 잘못 읽는다). `scripts/test-windows-git.sh` 로 확인한다.
