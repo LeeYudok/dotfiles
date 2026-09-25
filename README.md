@@ -213,8 +213,8 @@ starship 1.26 기준. `[palettes.catppuccin_mocha]` 로 색을 이름으로 참�
 | 2행 | 세션 비용 · 소요 시간(전체·API) · 변경 라인 수 · 프롬프트 캐시 적중률 · 5시간/주간 사용 한도와 리셋 시각 · 출력 스타일 · CLI 버전 |
 
 ```
-dotfiles │ ⎇ main │ Opus 5 (1M context) medium think │ █░░░░░░░░░ 10% (98k/1000k) ↑3
-$1.51 5m(api 1m) │ cache 95% │ 5h 16%↺12:00  7d 48%↺05:00 │ Proactive │ v2.1.278
+dotfiles │ git: main │ Opus 5 (1M context) medium think │ █░░░░░░░░░ 10% (98k/1000k) ↑3
+$1.51 5m(api 1m) │ cache 95% │ 5h 16%~12:00  7d 48%~05:00 │ Proactive │ v2.1.278
 ```
 
 렌더 빈도가 높으므로 `jq` 는 한 번만 호출해 모든 필드를 US(0x1f) 구분자로 받는다(탭은 IFS 공백류라 빈 필드가 합쳐져 값이 밀린다). payload 에 없는 필드는 그 구간을 통째로 생략하므로, 해당 키를 주지 않는 CLI 버전에서도 나머지는 그대로 나온다. 컨텍스트는 60%/80% 에서 색이 바뀌고 `exceeds_200k_tokens` 가 참이면 경고색과 `>200k` 표시가 붙는다.
@@ -231,8 +231,8 @@ Antigravity CLI(`agy`)는 Claude Code 와 같은 방식이다 — 에이전트 �
 | 2행 | Gemini 모델 5시간/주간 사용률과 리셋까지 남은 시간(`G`) · 타사 모델 한도(`3P`) · 작업·산출물·서브에이전트 수 · sandbox(+net) · vim 모드 · CLI 버전 |
 
 ```
-proj │ ⎇ main ● │ Gemini 3.5 Flash working │ █░░░░░░░░░ 14% (88k/1048k) ↑61k
-G 5h 15%↺1h00m  7d 90%↺1d1h │ tasks 2 agents 2 │ sandbox │ v1.2.3
+proj │ git: main * │ Gemini 3.5 Flash working │ █░░░░░░░░░ 14% (88k/1048k) ↑61k
+G 5h 15%~1h00m  7d 90%~1d1h │ tasks 2 agents 2 │ sandbox │ v1.2.3
 ```
 
 - 한도는 payload 에 남은 비율(`quota["gemini-5h"].remaining_fraction` 등)로 오지만 Claude statusline 과 맞춰 **사용률**(100 − 남은 %)로 보여주고, 60%/80% 에서 색이 바뀐다. 값이 없는 한도·0 인 개수는 칸째 생략한다.

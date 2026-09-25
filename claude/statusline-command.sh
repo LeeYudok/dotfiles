@@ -97,9 +97,9 @@ if [ -n "$cwd" ] && git -C "$cwd" --no-optional-locks rev-parse --is-inside-work
   fi
   if [ -n "$branch" ]; then
     if [ -n "$(git -C "$cwd" --no-optional-locks status --porcelain 2>/dev/null)" ]; then
-      git_part="${SEP}${FG_GIT_DIRTY}\xe2\x8e\x87 ${branch} \xe2\x97\x8f${RESET}"
+      git_part="${SEP}${FG_GIT_DIRTY}git: ${branch} *${RESET}"
     else
-      git_part="${SEP}${FG_GIT_CLEAN}\xe2\x8e\x87 ${branch}${RESET}"
+      git_part="${SEP}${FG_GIT_CLEAN}git: ${branch}${RESET}"
     fi
   fi
 fi
@@ -177,11 +177,11 @@ if [ -n "$five" ] || [ -n "$week" ]; then
   rl=""
   if [ -n "$five" ]; then
     rl="5h $(int "$five")%"
-    r=$(hhmm "$five_reset"); [ -n "$r" ] && rl="${rl}\xe2\x86\xba${r}"
+    r=$(hhmm "$five_reset"); [ -n "$r" ] && rl="${rl}~${r}"
   fi
   if [ -n "$week" ]; then
     w="7d $(int "$week")%"
-    r=$(hhmm "$week_reset"); [ -n "$r" ] && w="${w}\xe2\x86\xba${r}"
+    r=$(hhmm "$week_reset"); [ -n "$r" ] && w="${w}~${r}"
     [ -n "$rl" ] && rl="${rl}  ${w}" || rl="$w"
   fi
   rate_part="${FG_MUTE}${rl}${RESET}"
