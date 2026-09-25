@@ -166,6 +166,9 @@ nodes:
 - id: nerd-fonts
   type: external-url
   label: 'GitHub ryanoasis/nerd-fonts 릴리스 zip (JetBrainsMono, D2Coding)'
+- id: cli-tool-releases
+  type: external-url
+  label: 'GitHub 릴리스 바이너리 (zoxide, fzf, eza) — Linux 에서 ~/.local/bin 에 설치'
 - id: jq
   type: cli
   label: 'statusline 스크립트가 JSON 파싱에 사용'
@@ -192,6 +195,7 @@ edges:
 - {from: install, to: dnf-apt, rel: uses}
 - {from: install, to: starship-installer, rel: downloads}
 - {from: install, to: nerd-fonts, rel: downloads, env: [DOTFILES_PROC_VERSION]}
+- {from: install, to: cli-tool-releases, rel: downloads}
 - {from: install, to: python3, rel: requires}
 - {from: uninstall, to: home-backup, rel: reads}
 - {from: uninstall, to: codex-status-line, rel: invokes}

@@ -27,9 +27,13 @@ if [ "$(uname -s)" = "Linux" ]; then
   [ -f "$T/wsl/.zshrc" ] || { echo "FAIL wsl: .zshrc 미배치"; fail=1; }
   run ./install.sh >/dev/null 2>&1 || { echo "FAIL wsl: 두 번째 install.sh 실패"; fail=1; }
   [ -z "$(find "$T/wsl" -name '*.bak')" ] || { echo "FAIL wsl: 두 번째 실행에서 .bak 이 생김 (멱등 아님)"; fail=1; }
-  run ./uninstall.sh >/dev/null 2>&1 || { echo "FAIL wsl: uninstall.sh 실패"; fail=1; }
-  left="$(find "$T/wsl" -type f)"
+  # 일반 uninstall 은 설치한 바이너리(~/.local/bin)를 남긴다 — manifest 를 남겨 두고 --purge 로 이어서 지운다
+  run ./uninstall.sh --keep-backup >/dev/null 2>&1 || { echo "FAIL wsl: uninstall.sh 실패"; fail=1; }
+  left="$(find "$T/wsl" -type f -not -path "$T/wsl/.config/dotfiles/backup/*" -not -path "$T/wsl/.local/bin/*")"
   [ -z "$left" ] || { echo "FAIL wsl: uninstall 후 남은 파일"; printf '%s\n' "$left"; fail=1; }
+  run ./uninstall.sh --purge >/dev/null 2>&1 || { echo "FAIL wsl: uninstall.sh --purge 실패"; fail=1; }
+  left="$(find "$T/wsl" -type f)"
+  [ -z "$left" ] || { echo "FAIL wsl: uninstall --purge 후 남은 파일"; printf '%s\n' "$left"; fail=1; }
   echo "ok   wsl"
 else
   echo "skip wsl (Linux 에서만 시험 — 컨테이너에서 실행)"
