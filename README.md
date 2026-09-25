@@ -195,6 +195,7 @@ starship 1.26 기준. `[palettes.catppuccin_mocha]` 로 색을 이름으로 참�
 
 - PATH 는 `typeset -U path` 로 중복 자동 제거. macOS 판은 `HOMEBREW_PREFIX` 를 자동 감지(Apple Silicon `/opt/homebrew`, Intel `/usr/local`, `brew shellenv` 가 이미 설정했으면 그 값)하고, rustup·JAVA_HOME(openjdk@21)·pnpm·Antigravity 등은 **디렉터리가 있을 때만** PATH 에 넣는다. starship/zoxide/fzf/eza/bat/플러그인도 없으면 조용히 건너뛴다.
 - 머신별 항목(SSH 호스트 alias, 컨테이너 접속 alias, 프로젝트 전용 함수·경로 등)은 `~/.zshrc.local`(미추적) 에 두고 두 zshrc 가 플러그인 직전에 `source` 한다. 새 머신은 `cp zsh/zshrc.local.example ~/.zshrc.local` 후 필요한 예시만 주석을 풀어 그 머신 값으로 채운다.
+- `claude --yolo`, `agy --yolo` → `--dangerously-skip-permissions`(권한 확인 없이 Claude Code·Antigravity CLI 실행). 각 명령을 감싸는 셸 함수가 `--yolo` 인자만 바꿔 넘기며, 해당 명령이 PATH 에 있을 때만 정의한다.
 - 히스토리: 세션 간 공유, 중복 제거, 앞에 공백 붙인 명령은 기록 안 함(시크릿 입력용). ↑/↓ 는 입력한 접두어로 필터.
 - compinit 은 하루 한 번만 전체 스캔(`.zcompdump` 캐시)해 기동 시간을 줄인다.
 - fzf: `Ctrl-R` 히스토리, `Ctrl-T` 파일, `Alt-C` 디렉터리. `fd` 있으면 파일 탐색 소스로 사용.
