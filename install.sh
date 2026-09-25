@@ -16,10 +16,12 @@
 #   5.   Codex CLI status line — ~/.codex/config.toml 의 [tui] status_line 키만 merge (codex/status-line.py)
 #        + 비용 훅 배치 (~/.codex/cost-hook.py) 와 ~/.codex/hooks.json Stop 항목 하나만 merge (codex/hooks.py)
 #        Codex 를 쓰는 머신(codex 명령 또는 ~/.codex 존재)에서만. 없으면 건너뜀
-#   6.   기본 셸이 zsh 가 아니면 chsh 안내
+#   6.   Antigravity CLI(agy) statusline 스크립트 배치 (~/.gemini/antigravity-cli/statusline-command.sh)
+#        + settings.json 의 statusLine 키만 merge (agy/settings.py). agy 명령 또는 ~/.gemini/antigravity-cli 가 있을 때만
+#   7.   기본 셸이 zsh 가 아니면 chsh 안내
 #
 # 런타임 의존성: curl, unzip, python3 (0 단계에서 검사). macOS 는 Homebrew 필수. Windows 는 WSL2 안에서 실행.
-#   jq 는 statusline 스크립트 런타임 전용 — 1 단계에서 brew/dnf/apt 로 자동 설치 (sudo 불가 시 경고만).
+#   jq 는 statusline 스크립트(Claude·Antigravity) 런타임 전용 — 1 단계에서 brew/dnf/apt 로 자동 설치 (sudo 불가 시 경고만).
 # 멱등(idempotent): 재실행해도 안전하다. 배치 대상은 내용이 다를 때만 .bak 백업 후 덮어쓴다.
 #
 # 되돌리기: ./uninstall.sh — 최초 실행 시 ~/.dotfiles-backup/ 에 보관한 원본과 manifest 를 기준으로 복원한다.
@@ -29,6 +31,7 @@
 #   - settings.json.orig : settings.json 설치 전 전체 내용 (없었으면 settings.json.absent)
 #   - codex-config.toml.orig : ~/.codex/config.toml 설치 전 전체 내용 (없었으면 codex-config.toml.absent)
 #   - codex-hooks.json.absent / .present : ~/.codex/hooks.json 설치 전 유무 (다른 도구와 공유하는 파일이라 내용은 기록하지 않음)
+#   - agy-settings.json.orig : ~/.gemini/antigravity-cli/settings.json 설치 전 전체 내용 (없었으면 agy-settings.json.absent)
 
 set -euo pipefail
 cd "$(dirname "$0")"
@@ -64,6 +67,9 @@ if [ -f "$HOME/.codex/config.toml" ]; then
 fi
 if [ -f "$HOME/.codex/hooks.json" ]; then
   python3 codex/hooks.py check || die "$HOME/.codex/hooks.json 을 편집할 수 없음 — 수동으로 고친 뒤 다시 실행 (홈 파일은 변경하지 않았음)"
+fi
+if [ -f "$HOME/.gemini/antigravity-cli/settings.json" ]; then
+  python3 agy/settings.py check || die "$HOME/.gemini/antigravity-cli/settings.json 을 편집할 수 없음 — 수동으로 고친 뒤 다시 실행 (홈 파일은 변경하지 않았음)"
 fi
 
 # WSL 여부 — 커널 버전 문자열에 microsoft 가 들어 있다. DOTFILES_PROC_VERSION 은 시험용(다른 파일을 읽게 한다)
@@ -261,7 +267,18 @@ if command -v codex >/dev/null || [ -d "$HOME/.codex" ]; then
   info "Codex status line 배치 완료"
 fi
 
-# ── 6. 기본 셸 ─────────────────────────────────────────────
+# ── 6. Antigravity CLI statusline ──────────────────────────
+# Claude 와 같은 방식(외부 명령이 stdin JSON 을 받아 출력) — 스크립트 복사 + settings.json 의 statusLine 키만 merge
+# Antigravity CLI 를 쓰는 머신에서만. 없으면 ~/.gemini 를 만들지 않고 건너뜀
+if command -v agy >/dev/null || [ -d "$HOME/.gemini/antigravity-cli" ]; then
+  deploy_file agy/statusline-command.sh "$HOME/.gemini/antigravity-cli/statusline-command.sh" agy-statusline-command.sh
+  chmod +x "$HOME/.gemini/antigravity-cli/statusline-command.sh"
+  python3 agy/settings.py apply
+  command -v jq >/dev/null || info "경고: Antigravity statusline 스크립트는 jq 필요 — 설치 권장 (brew/dnf/apt install jq)"
+  info "Antigravity CLI statusline 배치 완료"
+fi
+
+# ── 7. 기본 셸 ─────────────────────────────────────────────
 ZSH_PATH="$(command -v zsh)"
 if [ "${SHELL:-}" != "$ZSH_PATH" ]; then
   info "기본 셸이 zsh 가 아님 → 변경하려면: chsh -s $ZSH_PATH"

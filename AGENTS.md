@@ -4,14 +4,16 @@
 
 ## 프로젝트 개요
 
-새 머신에 셸 환경을 한 번에 맞추는 개인 dotfiles 부트스트랩이다. 관리 대상은 네 가지뿐이다.
+새 머신에 셸 환경을 한 번에 맞추는 개인 dotfiles 부트스트랩이다. 관리 대상은 다섯 가지뿐이다.
 
 1. **zsh 설정** — macOS 용(`zsh/zshrc.macos`)과 Linux 서버용(`zsh/zshrc.linux`). 같은 섹션 순서를 따르고, 외부 도구는 설치돼 있을 때만 활성화한다.
 2. **starship 프롬프트** — `starship/starship.toml`. Catppuccin Mocha 팔레트, 2줄 프롬프트, Nerd Font 글리프. OS 공통.
 3. **Claude Code statusline** — `claude/statusline-command.sh` 와, `~/.claude/settings.json` 의 `statusLine` 키 하나.
 4. **Codex CLI status line** — `~/.codex/config.toml` 의 `[tui]` `status_line` 키 하나. Codex 는 외부 명령 status line 이 없어 `codex/status-line.py` 가 그 키만 merge/복원한다. 내장 비용 항목은 Enterprise 전용이라, API 환산 비용은 Stop 훅 `codex/cost-hook.py`(→ `~/.codex/cost-hook.py`)가 턴마다 표시하고 `codex/hooks.py` 가 `~/.codex/hooks.json` 에 그 항목 하나만 merge/제거한다.
 
-이 넷을 `install.sh` 가 홈 디렉터리에 배치하고 `uninstall.sh` 가 설치 전 상태로 되돌린다. 프레임워크(oh-my-zsh 등)나 dotfile 매니저(stow, chezmoi)는 쓰지 않는다 — 셸 스크립트 두 개와 복사할 파일들이 전부다. 빌드·패키지·테스트 러너도 없다.
+5. **Antigravity CLI statusline** — `agy/statusline-command.sh`(→ `~/.gemini/antigravity-cli/statusline-command.sh`)와, `~/.gemini/antigravity-cli/settings.json` 의 `statusLine` 키 하나. Claude 와 같은 외부 명령 방식이며 `agy/settings.py` 가 그 키만 merge/복원한다.
+
+이 다섯을 `install.sh` 가 홈 디렉터리에 배치하고 `uninstall.sh` 가 설치 전 상태로 되돌린다. 프레임워크(oh-my-zsh 등)나 dotfile 매니저(stow, chezmoi)는 쓰지 않는다 — 셸 스크립트 두 개와 복사할 파일들이 전부다. 빌드·패키지·테스트 러너도 없다.
 
 대상 환경: macOS(Apple Silicon/Intel, Homebrew 필수), Linux(RHEL/Rocky 계열 `dnf`, Debian 계열 `apt-get`), Windows 는 WSL2 안에서만(Linux 경로를 그대로 쓴다). Git Bash/MSYS/Cygwin 에서 `install.sh` 는 지원하지 않고 0 단계에서 중단한다. 셸 스크립트는 bash, 배치되는 설정은 zsh.
 
@@ -21,7 +23,7 @@
 
 | 경로 | 배치 위치 | 역할 |
 |---|---|---|
-| `install.sh` | — | 부트스트랩. 의존성 검사 → 패키지 → starship.toml → Nerd Fonts → zshrc → statusline + `statusLine` 키 merge → Codex `status_line` 키 merge + 비용 훅 → chsh 안내 |
+| `install.sh` | — | 부트스트랩. 의존성 검사 → 패키지 → starship.toml → Nerd Fonts → zshrc → statusline + `statusLine` 키 merge → Codex `status_line` 키 merge + 비용 훅 → Antigravity statusline + `statusLine` 키 merge → chsh 안내 |
 | `uninstall.sh` | — | `install.sh` 의 역연산. `--purge`(새로 설치한 패키지까지), `--keep-backup` |
 | `starship/starship.toml` | `~/.config/starship.toml` | 프롬프트 정의 |
 | `zsh/zshrc.macos` | `~/.zshrc` (Darwin) | brew 기반. `HOMEBREW_PREFIX` 자동 감지 |
@@ -31,6 +33,9 @@
 | `codex/status-line.py` | 배치 안 함 | `check`/`apply`/`restore`. `~/.codex/config.toml` 의 `[tui]` `status_line` 키만 줄 단위로 편집. `install.sh`·`uninstall.sh` 가 호출 |
 | `codex/cost-hook.py` | `~/.codex/cost-hook.py` | Codex Stop 훅. rollout jsonl 의 `token_count` 를 API 단가로 환산해 `systemMessage` 로 출력. 단가표는 이 파일에 있다 |
 | `codex/hooks.py` | 배치 안 함 | `check`/`apply`/`restore`. `~/.codex/hooks.json` 의 `Stop` 에 비용 훅 항목 하나만 추가/제거 |
+| `agy/statusline-command.sh` | `~/.gemini/antigravity-cli/statusline-command.sh` | Antigravity CLI 상태 JSON(stdin) → 두 줄 출력. `jq` 필요. 한도는 남은 비율을 사용률로 바꿔 표시 |
+| `agy/settings.py` | 배치 안 함 | `check`/`apply`/`restore`. `settings.json` 의 `statusLine` 키만 편집(`type`/`command`/`enabled` 만 맞추고 사용자 선택 키 보존). `install.sh`·`uninstall.sh` 가 호출 |
+| `scripts/test-agy-statusline.sh` | — | `agy/settings.py` 임시 `HOME` 왕복(멱등·키 보존·바이트 복원·거부)과 고정 payload 렌더 시험 |
 | `gitbash/bashrc` | `~/.bashrc` (Windows, Git Bash) | Git Bash 용. UTF-8·`core.quotepath`(환경변수로만)·히스토리·alias, 외부 도구는 있을 때만 |
 | `gitbash/bash_profile` | `~/.bash_profile` (Windows, Git Bash) | 로그인 셸이 `~/.bashrc` 를 읽게 한다. 없으면 Git Bash 가 스스로 만들어 역연산에서 빠지므로 함께 배치 |
 | `windows/install-git.ps1` | — | 폐쇄망 Windows 부트스트랩. 사전 검사(서명) → Git 오프라인 설치 → PATH → Windows Terminal fragment·바로가기 → bashrc → 확인 |
@@ -71,6 +76,7 @@
 - **덮어쓰기 전 백업**: 홈 파일 배치는 반드시 `deploy_file` 을 거친다(최초 원본을 `.orig`/`.absent` 로 기록 → 내용이 다르면 `.bak` → 복사). `cp` 직접 호출 금지. 최초 기록은 재실행 때 갱신하지 않는다.
 - **`settings.json` 은 키 단위 merge**: `statusLine` 외의 키를 읽거나 바꾸지 않는다. 쓰기는 같은 디렉터리의 임시 파일 + `os.replace` 로 원자적으로, 기존 mode 를 보존한다. 깨진 JSON 이면 손대지 않고 중단한다.
 - **`config.toml` 도 키 단위 merge**: `[tui]` 의 `status_line` 외에는 읽거나 바꾸지 않는다. TOML writer 가 없으므로 그 키의 줄만 교체하고 나머지는 바이트 그대로 둔다. `tomllib` 이 있으면 쓰기 전에 "`status_line` 외에는 같다"를 검증하고, 깨진 TOML·미지원 표기면 손대지 않고 중단한다. `install.sh` 와 `uninstall.sh` 가 같은 파서를 쓰도록 로직은 `codex/status-line.py` 한 곳에만 둔다. Codex 를 쓰지 않는 머신에서는 `~/.codex` 를 만들지 않는다.
+- **Antigravity `settings.json` 도 키 단위 merge**: `statusLine` 외의 키를 바꾸지 않고, `statusLine` 안에서도 `type`/`command`/`enabled` 만 맞춘다. 설치 전 기록은 `agy-settings.json.orig`/`.absent`. 로직은 `agy/settings.py` 한 곳에 둔다. Antigravity CLI 를 쓰지 않는 머신(`agy` 명령도 `~/.gemini/antigravity-cli` 도 없음)에서는 `~/.gemini` 를 만들지 않는다.
 - **`hooks.json` 은 공유 파일**: 다른 도구(터미널 앱 등)가 수시로 자기 훅을 넣고 빼므로 설치 전 원본으로 통째 되돌리지 않는다. `codex/hooks.py` 는 command 가 `~/.codex/cost-hook.py` 를 가리키는 항목만 넣고 빼며, 설치 전 기록은 파일 유무(`codex-hooks.json.absent`/`.present`)만 남긴다. 깨진 JSON·예상 밖 구조면 손대지 않고 중단한다.
 - **비용 훅은 Codex 를 막지 않는다**: `cost-hook.py` 는 어떤 오류든 조용히 exit 0 하고, 단가를 모르면 출력하지 않는다. 단가표를 고칠 때는 출처 URL 과 확인 날짜 주석도 같이 갱신한다.
 - **WSL 에서는 `$HOME` 밖을 건드리지 않는다**: WSL 은 `/proc/version` 의 `microsoft` 로 감지하고(`is_wsl`), Nerd Font 단계를 건너뛰고 안내만 한다. Windows 사용자 프로필에 폰트를 설치하는 식의 자동화는 넣지 않는다 — 역연산과 임시 `HOME` 왕복 시험이 성립하지 않는다. `DOTFILES_PROC_VERSION` 은 감지에 쓸 파일을 바꾸는 시험용 변수다.
@@ -90,8 +96,8 @@
 
 ```bash
 # 문법
-bash -n install.sh uninstall.sh claude/statusline-command.sh scripts/test-codex-status-line.sh scripts/test-codex-cost-hook.sh scripts/test-windows-paths.sh scripts/test-windows-git.sh gitbash/bashrc gitbash/bash_profile
-python3 -m py_compile codex/status-line.py codex/cost-hook.py codex/hooks.py
+bash -n install.sh uninstall.sh claude/statusline-command.sh agy/statusline-command.sh scripts/test-agy-statusline.sh scripts/test-codex-status-line.sh scripts/test-codex-cost-hook.sh scripts/test-windows-paths.sh scripts/test-windows-git.sh gitbash/bashrc gitbash/bash_profile
+python3 -m py_compile codex/status-line.py codex/cost-hook.py codex/hooks.py agy/settings.py
 zsh -n zsh/zshrc.macos zsh/zshrc.linux zsh/zshrc.local.example
 
 # 실제 홈에 영향 없이 설치/제거 왕복 (패키지는 이미 설치된 머신 기준)
@@ -107,6 +113,9 @@ scripts/test-codex-status-line.sh
 
 # Codex 비용 훅 — 고정 rollout 으로 금액 계산(Standard·Fast·단가 없음), hooks.json merge 멱등·다른 훅 보존·거부
 scripts/test-codex-cost-hook.sh
+
+# Antigravity statusline — settings.json statusLine 키 왕복(멱등·다른 키 보존·바이트 복원·깨진 JSON 거부), 고정 payload 렌더
+scripts/test-agy-statusline.sh
 
 # 폐쇄망 Windows 스크립트 — 인코딩·줄바꿈·bash 문법, pwsh 가 PATH 에 있으면 .ps1 구문 분석까지. 실제 설치는 Windows 에서만 확인할 수 있다
 scripts/test-windows-git.sh
