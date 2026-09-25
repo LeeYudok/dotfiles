@@ -52,6 +52,18 @@ else
   alias la='ls -A'
 fi
 alias grep='grep --color=auto'
+# AI CLI: `claude --yolo`, `agy --yolo` → `--dangerously-skip-permissions`
+_yolo_exec() {
+  local cmd=$1 a
+  local -a args
+  shift
+  for a in "$@"; do
+    [[ "$a" == --yolo ]] && args+=(--dangerously-skip-permissions) || args+=("$a")
+  done
+  command "$cmd" "${args[@]}"
+}
+command -v claude >/dev/null && function claude { _yolo_exec claude "$@"; }
+command -v agy >/dev/null && function agy { _yolo_exec agy "$@"; }
 
 # ── 시크릿 (mode 600, 버전관리 제외) ────────────────────────
 [ -f "$HOME/.secrets.zsh" ] && source "$HOME/.secrets.zsh"
