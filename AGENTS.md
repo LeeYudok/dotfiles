@@ -2,6 +2,8 @@
 
 이 저장소에서 작업하는 AI 에이전트와 기여자를 위한 안내. 사용자용 설치·사용법은 [README.md](README.md) 에 있고, 여기서는 **무엇을 하는 프로젝트인지, 무엇을 깨면 안 되는지, 어떻게 검증하는지**를 다룬다.
 
+> **기계 판독용 정보는 [`AGENTS.yaml`](AGENTS.yaml)** — 구성요소 그래프(`nodes`/`edges`), `commands`, `secret_files`(경로·키 이름만), `policies`, `known_issues` 등. 작업 전 이 파일을 먼저 읽고, 구성요소·경로·명령·환경변수가 바뀌면 이 문서와 **함께** 갱신한다. 두 파일이 어긋나면 실제 코드·파일시스템을 확인해 둘 다 고친다. 고친 뒤엔 `scripts/check-agents-yaml.sh` 로 검증한다. 날짜·버전 값은 항상 따옴표로 감싼다.
+
 ## 프로젝트 개요
 
 새 머신에 셸 환경을 한 번에 맞추는 개인 dotfiles 부트스트랩이다. 관리 대상은 다섯 가지뿐이다.
@@ -47,6 +49,8 @@
 | `scripts/test-codex-cost-hook.sh` | — | `cost-hook.py` 금액 계산(고정 rollout)과 `hooks.py` 임시 `HOME` 왕복 시험 |
 | `scripts/test-windows-paths.sh` | — | Git Bash 거부(어느 OS 에서나)와 WSL 폰트 건너뛰기(Linux 에서만) 시험 |
 | `.gitignore` | — | 머신별·시크릿 파일명 차단 |
+| `AGENTS.yaml` | — | 기계 판독용 사실(구성요소 그래프·명령·정책 요약·함정). 이 문서와 함께 갱신한다 |
+| `scripts/check-agents-yaml.sh` | — | `AGENTS.yaml` 검증기(구조·따옴표 없는 날짜·그래프·경로). agents-yaml 스킬 원본을 수정 없이 복사. python3 + PyYAML 필요 |
 
 홈에 생기는 부산물: `~/.config/dotfiles/backup/`(원본 기록과 설치 manifest), 배치 대상 옆의 `*.bak`(1세대), 폰트 디렉터리의 `.nerd-font-<name>-installed` 마커와 `.nerd-font-<name>-files.txt` manifest.
 
@@ -96,7 +100,7 @@
 
 ```bash
 # 문법
-bash -n install.sh uninstall.sh claude/statusline-command.sh agy/statusline-command.sh scripts/test-agy-statusline.sh scripts/test-codex-status-line.sh scripts/test-codex-cost-hook.sh scripts/test-windows-paths.sh scripts/test-windows-git.sh gitbash/bashrc gitbash/bash_profile
+bash -n install.sh uninstall.sh scripts/check-agents-yaml.sh claude/statusline-command.sh agy/statusline-command.sh scripts/test-agy-statusline.sh scripts/test-codex-status-line.sh scripts/test-codex-cost-hook.sh scripts/test-windows-paths.sh scripts/test-windows-git.sh gitbash/bashrc gitbash/bash_profile
 python3 -m py_compile codex/status-line.py codex/cost-hook.py codex/hooks.py agy/settings.py
 zsh -n zsh/zshrc.macos zsh/zshrc.linux zsh/zshrc.local.example
 
@@ -125,8 +129,11 @@ scripts/test-windows-paths.sh
 podman run --rm -v "$PWD":/src:ro docker.io/library/ubuntu:24.04 bash -c \
   'apt-get update -qq && apt-get install -y -qq sudo curl unzip python3 ca-certificates >/dev/null && cp -r /src /work && cd /work && scripts/test-windows-paths.sh'
 
+# AGENTS.yaml — 구조·타입·그래프·경로 검증 (PyYAML 필요)
+scripts/check-agents-yaml.sh
+
 # 공개 전 식별자 검사 — 결과가 없어야 한다
-git grep -nIE '([0-9]{1,3}\.){3}[0-9]{1,3}|/Users/[a-z0-9]+|/home/[a-z0-9]+|glpat-|ghp_|BEGIN [A-Z ]*PRIVATE KEY' -- ':!AGENTS.md'
+git grep -nIE '([0-9]{1,3}\.){3}[0-9]{1,3}|/Users/[a-z0-9]+|/home/[a-z0-9]+|glpat-|ghp_|BEGIN [A-Z ]*PRIVATE KEY' -- ':!AGENTS.md' ':!AGENTS.yaml'
 ```
 
 `HOME` 을 바꾼 왕복 시험은 Nerd Font 를 실제로 내려받는다(수십 MB). 폰트와 무관한 변경이면 임시 홈의 폰트 디렉터리에 `.nerd-font-JetBrainsMono-installed`, `.nerd-font-D2Coding-installed` 마커를 미리 만들어 건너뛸 수 있다.
