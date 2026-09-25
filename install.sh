@@ -7,6 +7,7 @@
 # 동작 (섹션 번호 = 아래 주석 번호 = README 단계 표):
 #   0.   의존성 사전 검사 — 누락 시 홈 파일을 하나도 바꾸지 않고 종료. Git Bash/MSYS/Cygwin 은 지원하지 않음(WSL2 에서 실행)
 #   1.   zsh / starship / 플러그인 / jq 설치 (없을 때만; macOS 는 eza·bat·zoxide 포함)
+#        Linux 는 zoxide·fzf·eza 를 GitHub 릴리스에서 ~/.local/bin 에 설치 (sudo 불필요)
 #   2.   starship.toml 배치 (~/.config/starship.toml)
 #   2.5. Nerd Fonts 설치 (JetBrainsMono, D2Coding; 마커 파일로 재설치 방지)
 #        WSL 에서는 건너뛰고 안내만 — 글리프는 Windows 쪽 터미널이 그리므로 폰트도 Windows 에 설치해야 한다
@@ -156,6 +157,43 @@ else
       info "경고: jq 없음 + sudo 불가 — Claude statusline 은 jq 설치 전까지 동작하지 않음 (dnf/apt install jq)"
     fi
   }
+  # zoxide / fzf / eza — 배포판 저장소에 없거나 낡은 경우가 많아 GitHub 릴리스 바이너리를 ~/.local/bin 에 둔다 (sudo 불필요)
+  latest_tag() { curl -fsSLI -o /dev/null -w '%{url_effective}' "https://github.com/$1/releases/latest" | sed 's#.*/tag/##'; }
+  install_release_bin() {   # install_release_bin <명령> <tar.gz URL>
+    local name="$1" url="$2" tmp src
+    tmp="$(mktemp -d)"
+    if curl -fsSL -o "$tmp/pkg.tar.gz" "$url" && tar -xzf "$tmp/pkg.tar.gz" -C "$tmp" \
+       && src="$(find "$tmp" -type f -name "$name" | head -n1)" && [ -n "$src" ]; then
+      mkdir -p "$HOME/.local/bin"
+      install -m 755 "$src" "$HOME/.local/bin/$name"
+      record bin-installed.txt "$HOME/.local/bin/$name"
+      info "$name 설치 → ~/.local/bin"
+    else
+      info "경고: $name 설치 실패 ($url)"
+    fi
+    rm -rf "$tmp"
+  }
+  case "$(uname -m)" in
+    x86_64|amd64)  arch_rust=x86_64;  arch_go=amd64; eza_libc=musl ;;
+    aarch64|arm64) arch_rust=aarch64; arch_go=arm64; eza_libc=gnu ;;   # eza 는 aarch64 musl 빌드가 없다
+    *)             arch_rust="" ;;
+  esac
+  if [ -z "$arch_rust" ]; then
+    info "경고: $(uname -m) 용 zoxide/fzf/eza 바이너리 없음 — 건너뜀"
+  else
+    command -v zoxide >/dev/null || {
+      if tag="$(latest_tag ajeetdsouza/zoxide)" && [ -n "$tag" ]; then
+        install_release_bin zoxide "https://github.com/ajeetdsouza/zoxide/releases/download/$tag/zoxide-${tag#v}-$arch_rust-unknown-linux-musl.tar.gz"
+      else info "경고: zoxide 최신 버전 확인 실패 — 건너뜀"; fi
+    }
+    command -v fzf >/dev/null || {
+      if tag="$(latest_tag junegunn/fzf)" && [ -n "$tag" ]; then
+        install_release_bin fzf "https://github.com/junegunn/fzf/releases/download/$tag/fzf-${tag#v}-linux_$arch_go.tar.gz"
+      else info "경고: fzf 최신 버전 확인 실패 — 건너뜀"; fi
+    }
+    command -v eza >/dev/null || \
+      install_release_bin eza "https://github.com/eza-community/eza/releases/latest/download/eza_$arch_rust-unknown-linux-$eza_libc.tar.gz"
+  fi
 fi
 
 # ── 2. starship.toml ───────────────────────────────────────
