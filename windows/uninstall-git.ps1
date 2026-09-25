@@ -6,9 +6,9 @@
 #
 #   (인자 없음)   : ~/.bashrc·~/.bash_profile 복원, Windows Terminal 프로필·시작 메뉴 바로가기 제거, 추가한 PATH 항목 제거
 #   -Purge       : 위에 더해 install-git.ps1 이 새로 설치했다고 기록한 Git 만 제거 (원래 있던 Git 은 건드리지 않는다)
-#   -KeepBackup  : ~\.dotfiles-backup 의 gitbash-* 기록을 남긴다 (기본은 복원 후 삭제)
+#   -KeepBackup  : ~\.config\dotfiles\backup 의 gitbash-* 기록을 남긴다 (기본은 복원 후 삭제)
 #
-# 복원 기준은 install-git.ps1 이 최초 실행 때 ~\.dotfiles-backup\ 에 남긴 gitbash-* 기록:
+# 복원 기준은 install-git.ps1 이 최초 실행 때 ~\.config\dotfiles\backup\ 에 남긴 gitbash-* 기록:
 #   gitbash-<name>.orig → 그 내용으로 복원 / .absent → 파일 삭제 / 기록 없음 → 건드리지 않음
 # ~/.bashrc.local 은 사용자 파일이라 건드리지 않는다. 멱등: 재실행해도 안전하다.
 #
@@ -27,7 +27,13 @@ function Info([string]$m) { Write-Host "[uninstall-git] $m" -ForegroundColor Yel
 function Warn([string]$m) { Write-Host "[uninstall-git] 경고: $m" -ForegroundColor Red }
 
 $HomeDir    = if ($env:HOME) { $env:HOME } else { $env:USERPROFILE }
-$BackupDir  = Join-Path $HomeDir '.dotfiles-backup'
+$BackupDir  = Join-Path $HomeDir '.config\dotfiles\backup'
+# 이전 버전이 쓰던 ~\.dotfiles-backup 에 기록이 있으면 새 위치로 옮겨 그 기록으로 복원한다
+$LegacyBackupDir = Join-Path $HomeDir '.dotfiles-backup'
+if ((Test-Path $LegacyBackupDir) -and -not (Test-Path $BackupDir)) {
+  New-Item -ItemType Directory -Force -Path (Split-Path -Parent $BackupDir) | Out-Null
+  Move-Item -LiteralPath $LegacyBackupDir -Destination $BackupDir
+}
 $WtFragmentDir = Join-Path $env:LOCALAPPDATA 'Microsoft\Windows Terminal\Fragments\dotfiles-gitbash'
 $StartMenuLnk  = Join-Path $env:APPDATA 'Microsoft\Windows\Start Menu\Programs\Git Bash (Portable).lnk'
 
@@ -107,6 +113,9 @@ if ($KeepBackup) {
   Get-ChildItem -LiteralPath $BackupDir -Filter 'gitbash-*' -File | Where-Object {
     $_.Name -ne 'gitbash-git-installed.txt' -or ($Purge -and $gitRemoved)
   } | Remove-Item -Force
-  if (-not (Get-ChildItem -Force -LiteralPath $BackupDir | Select-Object -First 1)) { Remove-Item -LiteralPath $BackupDir -Force }
+  # 비어 있으면 backup, dotfiles, .config 순으로 제거 (다른 파일이 있으면 그 단계에서 멈춘다)
+  foreach ($d in $BackupDir, (Split-Path -Parent $BackupDir), (Join-Path $HomeDir '.config')) {
+    if ((Test-Path $d) -and -not (Get-ChildItem -Force -LiteralPath $d | Select-Object -First 1)) { Remove-Item -LiteralPath $d -Force } else { break }
+  }
 }
 Info '완료'

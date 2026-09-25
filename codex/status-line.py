@@ -7,7 +7,7 @@ Codex CLI 는 Claude Code 와 달리 외부 명령을 실행하는 status line �
 
 사용법 (install.sh / uninstall.sh 가 호출):
   status-line.py check     # 쓰지 않고 apply 가 가능한지만 검사 (깨진 TOML·미지원 표기면 exit 1)
-  status-line.py apply     # status_line 키를 WANT 로 맞춤. 최초 1회 설치 전 상태를 ~/.dotfiles-backup 에 기록
+  status-line.py apply     # status_line 키를 WANT 로 맞춤. 최초 1회 설치 전 상태를 ~/.config/dotfiles/backup 에 기록
   status-line.py restore   # 기록해 둔 설치 전 값으로 되돌림 (없던 키면 제거)
 
 python3 표준 라이브러리에는 TOML writer 가 없어 status_line 키의 줄만 교체한다 — 다른 테이블·키·주석은
@@ -45,7 +45,7 @@ WANT = [
 
 HOME = os.path.expanduser("~")
 CONFIG = os.path.join(HOME, ".codex", "config.toml")
-BACKUP = os.path.join(HOME, ".dotfiles-backup")
+BACKUP = os.path.join(HOME, ".config", "dotfiles", "backup")
 ORIG = os.path.join(BACKUP, "codex-config.toml.orig")
 ABSENT = os.path.join(BACKUP, "codex-config.toml.absent")
 

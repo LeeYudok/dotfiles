@@ -3,7 +3,7 @@
 
 사용법 (install.sh / uninstall.sh 가 호출):
   hooks.py check     # 쓰지 않고 apply 가 가능한지만 검사 (깨진 JSON·예상 밖 구조면 exit 1)
-  hooks.py apply     # Stop 에 비용 훅 항목이 없으면 추가. 최초 1회 설치 전 파일 유무를 ~/.dotfiles-backup 에 기록
+  hooks.py apply     # Stop 에 비용 훅 항목이 없으면 추가. 최초 1회 설치 전 파일 유무를 ~/.config/dotfiles/backup 에 기록
   hooks.py restore   # 비용 훅 항목만 제거. 설치 전에 없던 파일이고 남은 훅이 없으면 파일도 지운다
 
 hooks.json 은 다른 도구(터미널 앱 등)도 자기 훅을 넣고 빼는 공유 파일이라, 설치 전 원본으로 통째 되돌리지 않고
@@ -17,7 +17,7 @@ import json, os, sys, tempfile
 HOME = os.path.expanduser("~")
 HOOKS = os.path.join(HOME, ".codex", "hooks.json")
 SCRIPT = os.path.join(HOME, ".codex", "cost-hook.py")
-BACKUP = os.path.join(HOME, ".dotfiles-backup")
+BACKUP = os.path.join(HOME, ".config", "dotfiles", "backup")
 ABSENT = os.path.join(BACKUP, "codex-hooks.json.absent")
 PRESENT = os.path.join(BACKUP, "codex-hooks.json.present")
 EVENT = "Stop"

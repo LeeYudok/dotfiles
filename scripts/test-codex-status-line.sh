@@ -70,7 +70,7 @@ reject() {              # reject <케이스 이름>
   if run "$name" check 2>/dev/null; then echo "FAIL $name: check 가 통과함"; fail=1; fi
   if run "$name" apply >/dev/null 2>&1; then echo "FAIL $name: apply 가 통과함"; fail=1; fi
   cmp -s "$cfg" "$T/$name.expected" || { echo "FAIL $name: 실패했는데 파일이 바뀜"; fail=1; }
-  [ ! -e "$T/$name/.dotfiles-backup" ] || { echo "FAIL $name: 실패했는데 백업 디렉터리가 생김"; fail=1; }
+  [ ! -e "$T/$name/.config/dotfiles/backup" ] || { echo "FAIL $name: 실패했는데 백업 디렉터리가 생김"; fail=1; }
   echo "ok   $name (거부)"
 }
 mkdir -p "$T/dotted/.codex"

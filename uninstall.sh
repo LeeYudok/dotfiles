@@ -4,9 +4,9 @@
 # 사용법:
 #   ./uninstall.sh            # 배치 파일 복원/제거 + statusLine(Claude·Antigravity)·Codex status_line 키 복원 + Nerd Font 제거
 #   ./uninstall.sh --purge    # 위에 더해 install.sh 가 새로 설치한 패키지/바이너리까지 제거
-#   ./uninstall.sh --keep-backup   # ~/.dotfiles-backup 을 남겨둠 (기본은 복원 후 삭제)
+#   ./uninstall.sh --keep-backup   # ~/.config/dotfiles/backup 을 남겨둠 (기본은 복원 후 삭제)
 #
-# 복원 기준은 install.sh 가 최초 실행 때 ~/.dotfiles-backup/ 에 남긴 기록:
+# 복원 기준은 install.sh 가 최초 실행 때 ~/.config/dotfiles/backup/ 에 남긴 기록:
 #   <name>.orig  → 그 내용으로 복원 / <name>.absent → 파일 삭제 / 기록 없음 → .bak 이 있으면 .bak 으로, 없으면 삭제
 # 멱등(idempotent): 재실행해도 안전하다. 실제 홈이 아닌 곳에 시험하려면 HOME=<임시 디렉터리> ./uninstall.sh
 
@@ -25,7 +25,11 @@ for arg in "$@"; do
 done
 
 info() { printf '\033[1;33m[uninstall]\033[0m %s\n' "$*"; }
-BACKUP_DIR="$HOME/.dotfiles-backup"
+BACKUP_DIR="$HOME/.config/dotfiles/backup"
+# 이전 버전이 쓰던 ~/.dotfiles-backup 에 기록이 있으면 새 위치로 옮겨 그 기록으로 복원한다
+if [ -d "$HOME/.dotfiles-backup" ] && [ ! -e "$BACKUP_DIR" ]; then
+  mkdir -p "$(dirname "$BACKUP_DIR")" && mv "$HOME/.dotfiles-backup" "$BACKUP_DIR"
+fi
 
 # ── 1. 배치 파일 복원/제거 ──────────────────────────────────
 restore_file() {        # restore_file <대상 경로> <기록 이름>
@@ -56,7 +60,7 @@ python3 - <<'PYEOF'
 import json, os, sys, tempfile
 home = os.path.expanduser("~")
 p = os.path.join(home, ".claude", "settings.json")
-backup = os.path.join(home, ".dotfiles-backup")
+backup = os.path.join(home, ".config", "dotfiles", "backup")
 orig = os.path.join(backup, "settings.json.orig")
 absent = os.path.join(backup, "settings.json.absent")
 
@@ -174,6 +178,7 @@ if [ "$KEEP_BACKUP" = 1 ]; then
   info "$BACKUP_DIR 유지 (--keep-backup)"
 else
   rm -rf "$BACKUP_DIR"
+  rmdir "$(dirname "$BACKUP_DIR")" 2>/dev/null || true   # 비어 있을 때만 제거
 fi
 rmdir "$HOME/.claude" 2>/dev/null || true   # 비어 있을 때만 제거
 rmdir "$HOME/.codex" 2>/dev/null || true

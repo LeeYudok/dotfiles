@@ -24,7 +24,7 @@
 #   jq 는 statusline 스크립트(Claude·Antigravity) 런타임 전용 — 1 단계에서 brew/dnf/apt 로 자동 설치 (sudo 불가 시 경고만).
 # 멱등(idempotent): 재실행해도 안전하다. 배치 대상은 내용이 다를 때만 .bak 백업 후 덮어쓴다.
 #
-# 되돌리기: ./uninstall.sh — 최초 실행 시 ~/.dotfiles-backup/ 에 보관한 원본과 manifest 를 기준으로 복원한다.
+# 되돌리기: ./uninstall.sh — 최초 실행 시 ~/.config/dotfiles/backup/ 에 보관한 원본과 manifest 를 기준으로 복원한다.
 #   - <name>.orig     : 덮어쓰기 전 원본 (최초 1회만 기록, 이후 실행은 갱신하지 않음)
 #   - <name>.absent   : 원래 그 파일이 없었다는 표시
 #   - brew-installed.txt / pkg-installed.txt / bin-installed.txt : 이 스크립트가 새로 설치한 것만 기록
@@ -41,7 +41,7 @@ info() { printf '\033[1;34m[install]\033[0m %s\n' "$*"; }
 die()  { printf '\033[1;31m[install] 오류:\033[0m %s\n' "$*" >&2; exit 1; }
 
 # ── 0. 의존성 사전 검사 (홈 파일 변경 전) ────────────────────
-# 여기서 실패하면 ~/.dotfiles-backup 을 포함해 아무것도 만들거나 바꾸지 않는다.
+# 여기서 실패하면 ~/.config/dotfiles/backup 을 포함해 아무것도 만들거나 바꾸지 않는다.
 case "$OS" in
   MINGW*|MSYS*|CYGWIN*)
     die "Git Bash/MSYS/Cygwin 은 지원하지 않음 (zsh·패키지 매니저 없음) — WSL2 를 설치(wsl --install)하고 그 안에서 실행. WSL2 를 쓸 수 없는 폐쇄망은 windows\\install-git.cmd 로 Git Bash 환경만 구성 (홈 파일은 변경하지 않았음)" ;;
@@ -78,7 +78,12 @@ is_wsl() {
   [ "$OS" != "Darwin" ] && [ -r "$f" ] && grep -qi microsoft "$f"
 }
 
-BACKUP_DIR="$HOME/.dotfiles-backup"
+BACKUP_DIR="$HOME/.config/dotfiles/backup"
+# 이전 버전이 쓰던 ~/.dotfiles-backup 이 남아 있으면 새 위치로 옮긴다 (설치 전 원본 기록을 잃지 않도록)
+if [ -d "$HOME/.dotfiles-backup" ] && [ ! -e "$BACKUP_DIR" ]; then
+  mkdir -p "$(dirname "$BACKUP_DIR")" && mv "$HOME/.dotfiles-backup" "$BACKUP_DIR"
+  info "~/.dotfiles-backup → $BACKUP_DIR 이동"
+fi
 mkdir -p "$BACKUP_DIR"
 
 # 최초 실행 시에만 원본 상태를 기록 (있으면 .orig 로 복사, 없으면 .absent 마커)
@@ -210,7 +215,7 @@ python3 - <<'PYEOF'
 import json, os, sys, tempfile
 home = os.path.expanduser("~")
 p = os.path.join(home, ".claude", "settings.json")
-backup = os.path.join(home, ".dotfiles-backup")
+backup = os.path.join(home, ".config", "dotfiles", "backup")
 
 def atomic_write_json(path, obj):
     """같은 디렉터리의 임시 파일에 쓰고 os.replace 로 교체 — 중단돼도 원본은 온전. 기존 mode 보존."""
