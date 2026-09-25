@@ -11,6 +11,8 @@ dotfiles/
 ├── install.sh                 # 부트스트랩 스크립트 (멱등)
 ├── uninstall.sh               # install.sh 적용 전 상태로 복원 (--purge 로 패키지까지)
 ├── AGENTS.md                  # 프로젝트 개요·불변 규칙·검증 방법 (AI 에이전트/기여자용)
+├── .gitignore                 # 머신별·시크릿 파일명, 반입용 설치 파일(windows/offline/) 차단
+├── .gitattributes             # 줄바꿈 고정 — 기본 LF, .ps1/.cmd 는 CRLF 그대로
 ├── starship/
 │   └── starship.toml          # Catppuccin Mocha 팔레트 2줄 프롬프트, Nerd Font 글리프 (OS 공통)
 ├── zsh/
@@ -52,7 +54,7 @@ cd dotfiles && ./install.sh
 | 0 | 의존성 검사 | Git Bash/MSYS/Cygwin 이면 "WSL2 에서 실행" 안내와 함께 중단. `curl`·`unzip`·`python3`, macOS 는 `brew`, Linux 는 `dnf`/`apt-get` 이 없으면 **홈 파일을 하나도 만들지 않고** 종료. `~/.claude/settings.json` 이 깨진 JSON 이거나 `~/.codex/config.toml` 을 편집할 수 없는 상태(깨진 TOML 등)여도 여기서 중단. |
 | 1 | 패키지 설치 | macOS: brew 로 `starship eza bat zoxide fzf fd jq zsh-autosuggestions zsh-syntax-highlighting` (없을 때만). Linux: `zsh`(dnf/apt), `starship`(공식 스크립트, sudo 없으면 `~/.local/bin`), 자동완성 플러그인 2종(dnf 는 EPEL 활성화 후), `jq`(sudo 가능할 때만, 아니면 경고). |
 | 2 | starship.toml | `starship/starship.toml` → `~/.config/starship.toml` |
-| 2.5 | Nerd Fonts | GitHub 최신 릴리스에서 `JetBrainsMono`, `D2Coding` zip 을 받아 폰트 디렉터리(macOS `~/Library/Fonts`, Linux `~/.local/share/fonts` + `fc-cache`)에 설치. 폰트별 `.nerd-font-<name>-installed` 마커 파일로 재설치 방지. **WSL 에서는 건너뛰고 안내만** 한다 — [Windows (WSL2)](#windows-wsl2) 참고. |
+| 2.5 | Nerd Fonts | GitHub 최신 릴리스에서 `JetBrainsMono`, `D2Coding` zip 을 받아 `.ttf`/`.otf` 를 폰트 디렉터리(macOS `~/Library/Fonts`, Linux `~/.local/share/fonts` + `fc-cache`)에 설치. 폰트별 `.nerd-font-<name>-installed` 마커 파일로 재설치 방지. **WSL 에서는 건너뛰고 안내만** 한다 — [Windows (WSL2)](#windows-wsl2) 참고. |
 | 3 | zshrc | OS 에 맞는 `zsh/zshrc.*` → `~/.zshrc`. 머신별 alias/함수는 `~/.zshrc.local`(미추적) 에 두며 스크립트가 만들지 않는다 — 없으면 안내만. |
 | 4 | Claude statusline | `claude/statusline-command.sh` → `~/.claude/statusline-command.sh` (+x). 스크립트 런타임에 `jq` 필요 — 없으면 경고만. 이어서 **python3** 로 `~/.claude/settings.json` 의 `statusLine` 키만 merge (다른 키 불변, 파일 없으면 생성). 같은 디렉터리의 임시 파일에 쓰고 `os.replace` 로 교체하므로 중단돼도 원본이 깨지지 않고, 기존 파일 mode 를 보존한다. |
 | 5 | Codex status line | Codex 를 쓰는 머신(`codex` 명령 또는 `~/.codex` 존재)에서만. `codex/status-line.py apply` 로 `~/.codex/config.toml` 의 `[tui]` `status_line` 키만 merge (다른 테이블·키·주석 불변, 파일 없으면 생성). 비용 훅 `codex/cost-hook.py` 를 `~/.codex/cost-hook.py` 로 배치하고 `codex/hooks.py apply` 로 `~/.codex/hooks.json` 의 `Stop` 에 그 항목 하나만 추가한다(다른 훅 불변). 원자적 쓰기와 mode 보존은 4 단계와 같다. `hooks.json` 이 깨진 JSON 이면 0 단계에서 중단. |
@@ -60,7 +62,7 @@ cd dotfiles && ./install.sh
 
 런타임 의존성: `curl`, `unzip`, `python3`(0 단계에서 검사). macOS 는 Homebrew 필수. Windows 는 WSL2 안에서 실행한다. `jq` 는 statusline 스크립트 런타임 전용이라 1 단계에서 자동 설치한다(Linux 는 sudo 가능할 때만).
 
-멱등(idempotent): 재실행해도 안전하다. 배치 대상 파일(`starship.toml`·`.zshrc`·`statusline-command.sh`)은 기존 파일과 내용이 다를 때만 `.bak` 백업 후 덮어쓴다 — `.bak` 은 1세대만 유지되므로 두 번 연속 다른 내용을 배치하면 첫 백업은 사라진다.
+멱등(idempotent): 재실행해도 안전하다. 배치 대상 파일(`starship.toml`·`.zshrc`·`statusline-command.sh`·`~/.codex/cost-hook.py`)은 기존 파일과 내용이 다를 때만 `.bak` 백업 후 덮어쓴다 — `.bak` 은 1세대만 유지되므로 두 번 연속 다른 내용을 배치하면 첫 백업은 사라진다.
 
 최초 실행 시 덮어쓸 파일의 원본과 설치 기록을 `~/.dotfiles-backup/` 에 남긴다(`<name>.orig` / `<name>.absent`, `brew-installed.txt`·`pkg-installed.txt`·`bin-installed.txt`, `settings.json.orig`, `codex-config.toml.orig`, `codex-hooks.json.absent`/`.present`). 재실행해도 이 기록은 갱신하지 않으므로 몇 번을 돌려도 "설치 전 원본"이 보존된다. Nerd Font 는 설치한 파일명을 `.nerd-font-<name>-files.txt` manifest 로 남긴다.
 
@@ -173,7 +175,7 @@ windows\uninstall-git.cmd -KeepBackup
 
 starship 1.26 기준. `[palettes.catppuccin_mocha]` 로 색을 이름으로 참조하고, 심볼은 전부 Nerd Font 글리프(이모지 없음).
 
-- 2줄: `╭─ OS아이콘 user @host dir git브랜치 [git상태] +추가 -삭제 via 언어버전 took 실행시간` / `╰─ 종료코드 ❯`
+- 2줄: `╭─ OS아이콘 user @host dir git브랜치 [git상태] +추가 -삭제 via 언어버전 took 실행시간 백그라운드작업수` / `╰─ 종료코드 ❯`
 - 오른쪽 프롬프트(`right_format`)에 현재 시각 `HH:MM:SS`
 - hostname 은 SSH 접속일 때만 (`ssh_only`), username 은 root 등 비기본 사용자일 때만
 - git: branch(원격 추적 브랜치 포함)·status·state(rebase/merge 진행률)·`git_metrics`(라인 증감)
@@ -183,7 +185,7 @@ starship 1.26 기준. `[palettes.catppuccin_mocha]` 로 색을 이름으로 참�
 
 ## zsh (zshrc.macos / zshrc.linux)
 
-두 파일은 같은 섹션 순서를 따른다: 환경·PATH → 히스토리·옵션 → 자동완성 → 툴 초기화 → alias/함수 → 시크릿 → 플러그인(맨 끝).
+두 파일은 같은 섹션 순서를 따른다: 환경·PATH → 히스토리·옵션 → 자동완성 → 툴 초기화 → alias/함수 → 시크릿(`~/.secrets.zsh`) → 머신별(`~/.zshrc.local`) → 플러그인(맨 끝, `zsh-syntax-highlighting` 이 마지막).
 
 - PATH 는 `typeset -U path` 로 중복 자동 제거. macOS 판은 `HOMEBREW_PREFIX` 를 자동 감지(Apple Silicon `/opt/homebrew`, Intel `/usr/local`, `brew shellenv` 가 이미 설정했으면 그 값)하고, rustup·JAVA_HOME(openjdk@21)·pnpm·Antigravity 등은 **디렉터리가 있을 때만** PATH 에 넣는다. starship/zoxide/fzf/eza/bat/플러그인도 없으면 조용히 건너뛴다.
 - 머신별 항목(SSH 호스트 alias, 컨테이너 접속 alias, 프로젝트 전용 함수·경로 등)은 `~/.zshrc.local`(미추적) 에 두고 두 zshrc 가 플러그인 직전에 `source` 한다. 새 머신은 `cp zsh/zshrc.local.example ~/.zshrc.local` 후 필요한 예시만 주석을 풀어 그 머신 값으로 채운다.
@@ -248,7 +250,8 @@ API 환산 $1.23 · 이번 턴 +$0.04 · 입력 1.4M(캐시 90%) · 출력 11.3k
 | 추적한다 | 추적하지 않는다 |
 |---|---|
 | OS 공통 프롬프트(`starship.toml`) | 실제 호스트명·IP·SSH 포트·내부 URL |
-| OS 별 zshrc (도구가 있을 때만 켜지는 구조) | 머신별 alias/함수 → `~/.zshrc.local` |
+| OS 별 zshrc (도구가 있을 때만 켜지는 구조) | 머신별 alias/함수 → `~/.zshrc.local`, Git Bash 는 `~/.bashrc.local` |
+| Git Bash 용 `bashrc`·`bash_profile`, 폐쇄망 Git 설치/제거 스크립트 | Git for Windows 설치 파일(`windows/offline/`) |
 | placeholder 로만 채운 `zshrc.local.example` | API 키·토큰 → `~/.secrets.zsh` (mode 600) |
 | statusline 스크립트, Codex `status_line` 항목 구성·비용 훅 | `~/.claude/settings.json`·`~/.codex/config.toml`·`~/.codex/hooks.json` 전체, 개인 `CLAUDE.md` |
 | 설치/제거 스크립트와 문서 | 머신별 적용 현황, 백업 파일(`*.bak`) |
@@ -257,11 +260,12 @@ API 환산 $1.23 · 이번 턴 +$0.04 · 입력 1.4M(캐시 90%) · 출력 11.3k
 
 ## 홈 파일과의 드리프트
 
-`install.sh` 는 홈 파일을 저장소 사본으로 덮어쓴다(`.bak` 1세대 백업). 홈에서 먼저 고친 설정이 있으면 저장소 사본이 더 오래된 상태일 수 있으므로, 재실행 전에 `diff zsh/zshrc.macos ~/.zshrc`, `diff starship/starship.toml ~/.config/starship.toml` 로 확인한다. 홈에서 가져올 때는 시크릿 값이나 머신 고유 경로가 섞여 있지 않은지 본다.
+`install.sh` 는 홈 파일을 저장소 사본으로 덮어쓴다(`.bak` 1세대 백업). 홈에서 먼저 고친 설정이 있으면 저장소 사본이 더 오래된 상태일 수 있으므로, 재실행 전에 `diff zsh/zshrc.macos ~/.zshrc`, `diff starship/starship.toml ~/.config/starship.toml` 로 확인한다. 폐쇄망 Windows 는 Git Bash 에서 `diff gitbash/bashrc ~/.bashrc` 로 본다(`install-git.ps1` 도 내용이 다르면 `.bak` 백업 후 덮어쓴다). 홈에서 가져올 때는 시크릿 값이나 머신 고유 경로가 섞여 있지 않은지 본다.
 
 ## 갱신 규칙
 
-- 로컬에서 `~/.zshrc` / `~/.config/starship.toml` / `~/.claude/statusline-command.sh` 를 바꾸면 이 저장소에도 반영해 커밋한다.
+- 로컬에서 `~/.zshrc` / `~/.config/starship.toml` / `~/.claude/statusline-command.sh` / `~/.codex/cost-hook.py` / (Git Bash) `~/.bashrc` 를 바꾸면 이 저장소에도 반영해 커밋한다.
 - 머신별 일회성 설정(특정 호스트 alias 등)은 `~/.zshrc.local` 에 두고 저장소 zshrc 에는 넣지 않는다. 공통화 가능한 것만 양쪽 zshrc 에 반영.
-- `install.sh` 에 단계를 추가하면 헤더 주석과 이 README 의 단계 표를 같이 고친다. 홈에 뭔가를 새로 만들면 `uninstall.sh` 에 그 역연산도 같이 넣는다.
-- 작업은 이슈 먼저(`#N`) → `docs/`·`feat/`·`fix/`·`chore/` 브랜치 → PR.
+- `install.sh` 에 단계를 추가하면 헤더 주석과 이 README 의 단계 표를 같이 고친다. 홈에 뭔가를 새로 만들면 `uninstall.sh` 에 그 역연산도 같이 넣는다. `windows/install-git.ps1` 과 `uninstall-git.ps1` 도 같은 관계다.
+- `windows/*.ps1` 은 UTF-8 BOM·CRLF, `*.cmd` 는 ASCII·CRLF 로 저장한다(Windows PowerShell 5.1·cmd.exe 가 한글·LF 를 잘못 읽는다). `scripts/test-windows-git.sh` 로 확인한다.
+- 작업은 이슈 먼저(`#N`) → `feat/issue-<N>-<slug>` 브랜치(`feat`/`fix`/`docs`/`chore`) → PR. 커밋 제목은 `feat(#N): ...`. 검증 명령은 [AGENTS.md](AGENTS.md#검증) 참고.
