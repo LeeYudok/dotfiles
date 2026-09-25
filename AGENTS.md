@@ -13,7 +13,9 @@
 
 이 넷을 `install.sh` 가 홈 디렉터리에 배치하고 `uninstall.sh` 가 설치 전 상태로 되돌린다. 프레임워크(oh-my-zsh 등)나 dotfile 매니저(stow, chezmoi)는 쓰지 않는다 — 셸 스크립트 두 개와 복사할 파일들이 전부다. 빌드·패키지·테스트 러너도 없다.
 
-대상 환경: macOS(Apple Silicon/Intel, Homebrew 필수), Linux(RHEL/Rocky 계열 `dnf`, Debian 계열 `apt-get`), Windows 는 WSL2 안에서만(Linux 경로를 그대로 쓴다). Git Bash/MSYS/Cygwin 은 지원하지 않고 0 단계에서 중단한다. 셸 스크립트는 bash, 배치되는 설정은 zsh.
+대상 환경: macOS(Apple Silicon/Intel, Homebrew 필수), Linux(RHEL/Rocky 계열 `dnf`, Debian 계열 `apt-get`), Windows 는 WSL2 안에서만(Linux 경로를 그대로 쓴다). Git Bash/MSYS/Cygwin 에서 `install.sh` 는 지원하지 않고 0 단계에서 중단한다. 셸 스크립트는 bash, 배치되는 설정은 zsh.
+
+별도 경로: **폐쇄망 Windows(인터넷·WSL2 불가)** 는 `windows/install-git.ps1`(cmd 는 `install-git.cmd`)이 반입한 Git for Windows 설치 파일로 Git 을 오프라인 설치하고, Git Bash 용 `gitbash/bashrc`·`bash_profile` 을 배치한다. zsh·starship·statusline 은 이 경로에 없다. 역연산은 `windows/uninstall-git.ps1`.
 
 ## 디렉터리와 파일별 역할
 
@@ -29,6 +31,13 @@
 | `codex/status-line.py` | 배치 안 함 | `check`/`apply`/`restore`. `~/.codex/config.toml` 의 `[tui]` `status_line` 키만 줄 단위로 편집. `install.sh`·`uninstall.sh` 가 호출 |
 | `codex/cost-hook.py` | `~/.codex/cost-hook.py` | Codex Stop 훅. rollout jsonl 의 `token_count` 를 API 단가로 환산해 `systemMessage` 로 출력. 단가표는 이 파일에 있다 |
 | `codex/hooks.py` | 배치 안 함 | `check`/`apply`/`restore`. `~/.codex/hooks.json` 의 `Stop` 에 비용 훅 항목 하나만 추가/제거 |
+| `gitbash/bashrc` | `~/.bashrc` (Windows, Git Bash) | Git Bash 용. UTF-8·`core.quotepath`(환경변수로만)·히스토리·alias, 외부 도구는 있을 때만 |
+| `gitbash/bash_profile` | `~/.bash_profile` (Windows, Git Bash) | 로그인 셸이 `~/.bashrc` 를 읽게 한다. 없으면 Git Bash 가 스스로 만들어 역연산에서 빠지므로 함께 배치 |
+| `windows/install-git.ps1` | — | 폐쇄망 Windows 부트스트랩. 사전 검사(서명) → Git 오프라인 설치 → PATH → Windows Terminal fragment·바로가기 → bashrc → 확인 |
+| `windows/uninstall-git.ps1` | — | `install-git.ps1` 의 역연산. `-Purge`(설치 기록이 있는 Git 까지), `-KeepBackup` |
+| `windows/*.cmd` | — | cmd 에서 같은 이름의 `.ps1` 을 `-ExecutionPolicy Bypass` 로 실행하는 래퍼 |
+| `scripts/test-windows-git.sh` | — | `windows/`·`gitbash/` 정적 시험. 인코딩(BOM·ASCII)·줄바꿈·bash 문법·pwsh 구문 분석(있을 때) |
+| `.gitattributes` | — | 기본 LF, `.ps1`/`.cmd` 는 CRLF 그대로(`-text`) |
 | `scripts/test-codex-status-line.sh` | — | `status-line.py` 의 임시 `HOME` 왕복 시험. `status_line` 순서까지 검증 |
 | `scripts/test-codex-cost-hook.sh` | — | `cost-hook.py` 금액 계산(고정 rollout)과 `hooks.py` 임시 `HOME` 왕복 시험 |
 | `scripts/test-windows-paths.sh` | — | Git Bash 거부(어느 OS 에서나)와 WSL 폰트 건너뛰기(Linux 에서만) 시험 |
@@ -70,6 +79,8 @@
 - **install 과 uninstall 은 한 쌍**: `install.sh` 가 홈에 뭔가를 새로 만들면 같은 변경에서 `uninstall.sh` 에 역연산을 넣는다.
 - **번호 동기화**: `install.sh` 의 섹션 번호, 헤더 주석의 동작 목록, README 의 단계 표는 항상 같은 번호를 쓴다. 단계를 바꾸면 세 곳을 같이 고친다.
 - **zshrc 구조**: 두 zshrc 는 같은 섹션 순서(환경·PATH → 히스토리·옵션 → 자동완성 → 툴 초기화 → alias → 시크릿 → 머신별 → 플러그인)를 지킨다. 도구·디렉터리는 존재할 때만 활성화하고 없으면 조용히 건너뛴다. `zsh-syntax-highlighting` 은 맨 마지막에 source 한다. PATH 는 `typeset -U path` 로 중복을 막는다.
+- **Windows 스크립트 인코딩**: `.ps1` 은 UTF-8 **BOM**·CRLF(Windows PowerShell 5.1 은 BOM 이 없으면 한글을 cp949 로 읽어 구문까지 깨진다), `.cmd` 는 **ASCII**·CRLF, `gitbash/` 는 LF. PowerShell 5.1 에서 돌아야 하므로 7 전용 문법(`??`, `&&` 파이프라인 연산자 등)을 쓰지 않는다. `scripts/test-windows-git.sh` 가 검사한다.
+- **폐쇄망 Windows 경로도 같은 규칙**: 인터넷에서 아무것도 받지 않는다(설치 파일은 반입). 사전 검사 실패 시 아무것도 바꾸지 않고, 홈 파일은 `gitbash-<name>.orig`/`.absent` 기록 후 내용이 다를 때만 `.bak` 백업하고 배치한다. Git 은 이 스크립트가 새로 설치했을 때만 `gitbash-git-installed.txt` 에 기록하고 `-Purge` 는 그것만 지운다. 사용자 PATH 는 추가한 항목만 기록·제거하고 값의 종류(REG_EXPAND_SZ)를 보존한다. Windows Terminal 은 `settings.json` 대신 fragment 로만 건드린다. `~/.gitconfig`, `~/.bashrc.local` 은 만들지도 바꾸지도 않는다.
 - **`trap ... RETURN` 금지**: bash 에서 함수 밖으로 새어 이후 모든 함수 리턴에 발화한다. 임시 디렉터리 정리는 단일 지점에서 한다.
 - **프롬프트 심볼은 Nerd Font 글리프**: 이모지를 쓰지 않는다. `starship.toml` 은 starship 1.22(Linux 배포판 버전)에서도 동작해야 한다.
 
@@ -79,7 +90,7 @@
 
 ```bash
 # 문법
-bash -n install.sh uninstall.sh claude/statusline-command.sh scripts/test-codex-status-line.sh scripts/test-codex-cost-hook.sh scripts/test-windows-paths.sh
+bash -n install.sh uninstall.sh claude/statusline-command.sh scripts/test-codex-status-line.sh scripts/test-codex-cost-hook.sh scripts/test-windows-paths.sh scripts/test-windows-git.sh gitbash/bashrc gitbash/bash_profile
 python3 -m py_compile codex/status-line.py codex/cost-hook.py codex/hooks.py
 zsh -n zsh/zshrc.macos zsh/zshrc.linux zsh/zshrc.local.example
 
@@ -96,6 +107,9 @@ scripts/test-codex-status-line.sh
 
 # Codex 비용 훅 — 고정 rollout 으로 금액 계산(Standard·Fast·단가 없음), hooks.json merge 멱등·다른 훅 보존·거부
 scripts/test-codex-cost-hook.sh
+
+# 폐쇄망 Windows 스크립트 — 인코딩·줄바꿈·bash 문법, pwsh 가 PATH 에 있으면 .ps1 구문 분석까지. 실제 설치는 Windows 에서만 확인할 수 있다
+scripts/test-windows-git.sh
 
 # Windows 경로 — Git Bash 거부는 어느 OS 에서나, WSL 흉내 왕복은 Linux 에서만 돈다 (macOS 에서는 컨테이너로)
 scripts/test-windows-paths.sh

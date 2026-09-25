@@ -5,6 +5,7 @@
 .zshrc.local
 zshrc.local
 .secrets.zsh
+.bashrc.local
 .env
 .env.*
 *.bak
@@ -14,6 +15,9 @@ claude/CLAUDE.md
 claude/settings.json
 claude/settings.local.json
 codex/config.toml
+
+# 폐쇄망 반입용 Git for Windows 설치 파일 (windows/offline/ 에 두고 쓴다 — 저장소에는 올리지 않는다)
+windows/offline/
 
 # python 산출물 (py_compile 검증)
 __pycache__/
