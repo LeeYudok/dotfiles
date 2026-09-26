@@ -1,6 +1,6 @@
 # dotfiles
 
-zsh + starship 셸 환경과 Claude Code·Antigravity CLI statusline, Codex CLI status line 을 새 머신에 한 번에 맞추는 부트스트랩 저장소. macOS(Homebrew)와 Linux(dnf/apt), Windows(WSL2) 를 같은 `install.sh` 로 설치하고, `uninstall.sh` 로 설치 전 상태까지 되돌린다. WSL2 를 쓸 수 없는 폐쇄망 Windows 는 `windows/install-git.cmd` 로 Git 을 오프라인 설치하고 Git Bash 환경을 맞춘다 — [Windows 폐쇄망 (Git Bash)](#windows-폐쇄망-git-bash).
+zsh + starship 셸 환경과 Claude Code·Antigravity CLI statusline, Codex CLI status line 을 새 머신에 한 번에 맞추는 부트스트랩 저장소. macOS(Homebrew)와 Linux(dnf/apt), Windows(WSL2) 를 같은 `install.sh` 로 설치하고, `uninstall.sh` 로 설치 전 상태까지 되돌린다. Android 는 Termux 에 Debian 을 올려 같은 `install.sh` 를 쓴다 — [Android (Termux + proot-distro)](#android-termux--proot-distro). WSL2 를 쓸 수 없는 폐쇄망 Windows 는 `windows/install-git.cmd` 로 Git 을 오프라인 설치하고 Git Bash 환경을 맞춘다 — [Windows 폐쇄망 (Git Bash)](#windows-폐쇄망-git-bash).
 
 어느 머신에나 그대로 적용할 수 있는 설정만 추적한다. 호스트 alias·내부 URL·API 키·개인 에이전트 지침처럼 머신이나 사람에 묶인 것은 저장소 밖(`~/.zshrc.local`, `~/.secrets.zsh`)에 둔다 — 자세한 경계는 [추적 범위](#추적-범위) 참고. 에이전트·기여자용 상세 규칙은 [AGENTS.md](AGENTS.md).
 
@@ -98,7 +98,21 @@ Windows 사용자 프로필은 WSL 의 `$HOME` 밖이라 스크립트가 자동�
 
 ## Android (Termux + proot-distro)
 
-Termux 안의 proot-distro(Debian 등)에서는 일반 Linux 와 같이 `install.sh` 를 실행한다. 다만 2.5 단계가 설치하는 `~/.local/share/fonts` 는 proot 안쪽 폰트 디렉터리라 **화면에는 반영되지 않는다.** 글리프를 그리는 것은 Termux 앱이고, Termux 는 자기 홈의 `~/.termux/font.ttf` 한 파일만 읽는다. 이 파일이 없으면 Android 기본 폰트로 그려 프롬프트·statusline 아이콘이 네모로 깨진다.
+Android 에서는 **Termux 에 proot-distro 로 Debian 을 설치하고 그 안에서** `install.sh` 를 실행한다. Termux 기본 셸은 `sudo`(root)가 없고 패키지가 표준 경로(`/usr`) 대신 Termux 전용 prefix 에 깔려 `install.sh` 의 전제와 맞지 않으므로 직접 실행하지 않는다.
+
+```bash
+# Termux 기본 세션에서
+pkg install proot-distro
+proot-distro install debian
+proot-distro login debian
+
+# Debian 안에서 — install.sh 가 sudo 로 패키지를 설치하므로 sudo 도 넣는다
+apt-get update && apt-get install -y sudo git curl unzip python3
+git clone https://github.com/LeeYudok/dotfiles.git
+cd dotfiles && ./install.sh
+```
+
+이후 과정은 일반 Linux(apt) 와 같다. 다만 2.5 단계가 설치하는 `~/.local/share/fonts` 는 proot 안쪽 폰트 디렉터리라 **화면에는 반영되지 않는다.** 글리프를 그리는 것은 Termux 앱이고, Termux 는 자기 홈의 `~/.termux/font.ttf` 한 파일만 읽는다. 이 파일이 없으면 Android 기본 폰트로 그려 프롬프트·statusline 아이콘이 네모로 깨진다.
 
 proot 안에서 다음을 실행해 Nerd Font 하나를 Termux 폰트로 지정한다. 한글 폭을 맞추려면 D2Coding 의 Mono 변형을 권한다.
 
