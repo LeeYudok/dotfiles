@@ -1,6 +1,6 @@
 # dotfiles
 
-zsh + starship 셸 환경과 Claude Code·Antigravity CLI statusline, Codex CLI status line 을 새 머신에 한 번에 맞추는 부트스트랩 저장소. macOS(Homebrew)와 Linux(dnf/apt), Windows(WSL2) 를 같은 `install.sh` 로 설치하고, `uninstall.sh` 로 설치 전 상태까지 되돌린다. WSL2 를 쓸 수 없는 폐쇄망 Windows 는 `windows/install-git.cmd` 로 Git 을 오프라인 설치하고 Git Bash 환경을 맞춘다 — [Windows 폐쇄망 (Git Bash)](#windows-폐쇄망-git-bash).
+zsh + starship 셸 환경과 Claude Code·Antigravity CLI statusline, Codex CLI status line 을 새 머신에 한 번에 맞추는 부트스트랩 저장소. macOS(Homebrew)와 Linux(dnf/apt), Windows(WSL2) 를 같은 `install.sh` 로 설치하고, `uninstall.sh` 로 설치 전 상태까지 되돌린다. Android 는 Termux 에 Debian 을 올려 같은 `install.sh` 를 쓴다 — [Android (Termux + proot-distro)](#android-termux--proot-distro). WSL2 를 쓸 수 없는 폐쇄망 Windows 는 `windows/install-git.cmd` 로 Git 을 오프라인 설치하고 Git Bash 환경을 맞춘다 — [Windows 폐쇄망 (Git Bash)](#windows-폐쇄망-git-bash).
 
 어느 머신에나 그대로 적용할 수 있는 설정만 추적한다. 호스트 alias·내부 URL·API 키·개인 에이전트 지침처럼 머신이나 사람에 묶인 것은 저장소 밖(`~/.zshrc.local`, `~/.secrets.zsh`)에 둔다 — 자세한 경계는 [추적 범위](#추적-범위) 참고. 에이전트·기여자용 상세 규칙은 [AGENTS.md](AGENTS.md).
 
@@ -96,6 +96,38 @@ chsh -s "$(command -v zsh)"
 
 Windows 사용자 프로필은 WSL 의 `$HOME` 밖이라 스크립트가 자동으로 설치하지 않는다(되돌리기와 임시 `HOME` 시험이 성립하지 않는다). 나머지 단계(zshrc·starship·Claude statusline·Codex status line)는 일반 Linux 와 같고, Claude Code·Codex 도 WSL 안에 설치해 쓴다. `uninstall.sh` 는 WSL 에서도 그대로 동작한다 — 폰트는 마커·manifest 가 없으므로 건드릴 것이 없다.
 
+## Android (Termux + proot-distro)
+
+Android 에서는 **Termux 에 proot-distro 로 Debian 을 설치하고 그 안에서** `install.sh` 를 실행한다. Termux 기본 셸은 `sudo`(root)가 없고 패키지가 표준 경로(`/usr`) 대신 Termux 전용 prefix 에 깔려 `install.sh` 의 전제와 맞지 않으므로 직접 실행하지 않는다.
+
+```bash
+# Termux 기본 세션에서
+pkg install proot-distro
+proot-distro install debian
+proot-distro login debian
+
+# Debian 안에서 — install.sh 가 sudo 로 패키지를 설치하므로 sudo 도 넣는다
+apt-get update && apt-get install -y sudo git curl unzip python3
+git clone https://github.com/LeeYudok/dotfiles.git
+cd dotfiles && ./install.sh
+```
+
+이후 과정은 일반 Linux(apt) 와 같다. 다만 2.5 단계가 설치하는 `~/.local/share/fonts` 는 proot 안쪽 폰트 디렉터리라 **화면에는 반영되지 않는다.** 글리프를 그리는 것은 Termux 앱이고, Termux 는 자기 홈의 `~/.termux/font.ttf` 한 파일만 읽는다. 이 파일이 없으면 Android 기본 폰트로 그려 프롬프트·statusline 아이콘이 네모로 깨진다.
+
+proot 안에서 다음을 실행해 Nerd Font 하나를 Termux 폰트로 지정한다. 한글 폭을 맞추려면 D2Coding 의 Mono 변형을 권한다.
+
+```bash
+# proot 안에서 — Termux 홈은 proot-distro 가 기본으로 bind 한다
+T=/data/data/com.termux/files/home/.termux
+mkdir -p "$T"
+cp ~/.local/share/fonts/D2KodingLigatureNerdFontMono-Regular.ttf "$T/font.ttf"
+```
+
+적용은 **proot 밖**에서 한다. Termux 기본 세션에서 `termux-reload-settings` 를 실행하거나 앱을 완전히 종료했다 다시 연다(proot 안에서는 `am` 이 없어 실패한다). `printf '\ue0a0 \uf07c \ue725\n'` 이 아이콘으로 보이면 된다.
+
+- Termux 가 아닌 SSH 앱(JuiceSSH, Termius 등)으로 접속한다면 그 앱의 글꼴 설정에서 Nerd Font 를 지정한다.
+- `~/.termux` 는 proot 의 `$HOME` 밖이라 스크립트가 자동으로 만들지 않고, `uninstall.sh` 도 건드리지 않는다. 되돌리려면 `font.ttf` 를 직접 지운다.
+
 ## Windows 폐쇄망 (Git Bash)
 
 인터넷과 WSL2 를 쓸 수 없는 Windows(사내 폐쇄망 등)에서는 zsh 환경 대신 **Git for Windows 와 Git Bash** 만 맞춘다. `install.sh` 는 쓰지 않고 `windows/` 의 PowerShell 스크립트를 PowerShell 또는 cmd 에서 실행한다. 관리자 권한이 없어도 된다.
@@ -187,7 +219,7 @@ starship 1.26 기준. `[palettes.catppuccin_mocha]` 로 색을 이름으로 참�
 - git: branch(원격 추적 브랜치 포함)·status·state(rebase/merge 진행률)·`git_metrics`(라인 증감)
 - 언어/런타임은 해당 프로젝트 파일이 있을 때만: rust/python(pyenv·venv)/node/bun/java/go, docker context 는 compose 파일 있을 때만. kubernetes 모듈은 기본 비활성.
 - `directory.substitutions` 로 `~/workspace` → `ws` 축약
-- 터미널 폰트를 JetBrainsMono Nerd Font(또는 D2Coding Nerd Font)로 지정해야 글리프가 깨지지 않는다 (2.5 단계에서 설치). Linux 서버의 starship 1.22 에서도 동작(palettes 는 1.9+, os 모듈 1.16+).
+- 터미널 폰트를 JetBrainsMono Nerd Font(또는 D2Coding Nerd Font)로 지정해야 글리프가 깨지지 않는다 (2.5 단계에서 설치). WSL·Termux 처럼 터미널이 다른 곳에 있으면 그쪽에 지정한다 — [Windows (WSL2)](#windows-wsl2), [Android (Termux + proot-distro)](#android-termux--proot-distro). Linux 서버의 starship 1.22 에서도 동작(palettes 는 1.9+, os 모듈 1.16+).
 
 ## zsh (zshrc.macos / zshrc.linux)
 
