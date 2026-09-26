@@ -50,6 +50,8 @@ restore_file() {        # restore_file <대상 경로> <기록 이름>
   rm -f "$dst.bak"
 }
 restore_file "$HOME/.config/starship.toml" starship.toml
+restore_file "$HOME/.config/eza/theme.yml" eza-theme.yml
+rmdir "$HOME/.config/eza" 2>/dev/null || true   # 비어 있을 때만 제거
 restore_file "$HOME/.zshrc" zshrc
 [ -f "$HOME/.zshrc.local" ] && info "$HOME/.zshrc.local 은 사용자 파일 — 유지 (install.sh 가 만든 것이 아님)"
 restore_file "$HOME/.claude/statusline-command.sh" statusline-command.sh

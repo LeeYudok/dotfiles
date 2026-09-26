@@ -28,6 +28,7 @@
 | `install.sh` | — | 부트스트랩. 의존성 검사 → 패키지 → starship.toml → Nerd Fonts → zshrc → statusline + `statusLine` 키 merge → Codex `status_line` 키 merge + 비용 훅 → Antigravity statusline + `statusLine` 키 merge → chsh 안내 |
 | `uninstall.sh` | — | `install.sh` 의 역연산. `--purge`(새로 설치한 패키지까지), `--keep-backup` |
 | `starship/starship.toml` | `~/.config/starship.toml` | 프롬프트 정의 |
+| `eza/theme.yml` | `~/.config/eza/theme.yml` | eza 아이콘 덮어쓰기. 기본 아이콘 중 Nerd Font v3 전용 코드를 v2·v3 공통 글리프로 바꾼다 |
 | `zsh/zshrc.macos` | `~/.zshrc` (Darwin) | brew 기반. `HOMEBREW_PREFIX` 자동 감지 |
 | `zsh/zshrc.linux` | `~/.zshrc` (그 외) | 미니멀판. 도구가 없으면 기본 프롬프트·`ls --color`·일반 `cd` 로 폴백 |
 | `zsh/zshrc.local.example` | 배치 안 함 | `~/.zshrc.local` 템플릿. 사용자가 직접 복사한다. **placeholder 만** 담는다 |
@@ -92,7 +93,7 @@
 - **Windows 스크립트 인코딩**: `.ps1` 은 UTF-8 **BOM**·CRLF(Windows PowerShell 5.1 은 BOM 이 없으면 한글을 cp949 로 읽어 구문까지 깨진다), `.cmd` 는 **ASCII**·CRLF, `gitbash/` 는 LF. PowerShell 5.1 에서 돌아야 하므로 7 전용 문법(`??`, `&&` 파이프라인 연산자 등)을 쓰지 않는다. `scripts/test-windows-git.sh` 가 검사한다.
 - **폐쇄망 Windows 경로도 같은 규칙**: 인터넷에서 아무것도 받지 않는다(설치 파일은 반입). 사전 검사 실패 시 아무것도 바꾸지 않고, 홈 파일은 `gitbash-<name>.orig`/`.absent` 기록 후 내용이 다를 때만 `.bak` 백업하고 배치한다. Git 은 이 스크립트가 새로 설치했을 때만 `gitbash-git-installed.txt` 에 기록하고 `-Purge` 는 그것만 지운다. 사용자 PATH 는 추가한 항목만 기록·제거하고 값의 종류(REG_EXPAND_SZ)를 보존한다. Windows Terminal 은 `settings.json` 대신 fragment 로만 건드린다. `~/.gitconfig`, `~/.bashrc.local` 은 만들지도 바꾸지도 않는다.
 - **`trap ... RETURN` 금지**: bash 에서 함수 밖으로 새어 이후 모든 함수 리턴에 발화한다. 임시 디렉터리 정리는 단일 지점에서 한다.
-- **프롬프트 심볼은 Nerd Font 글리프**: 이모지를 쓰지 않는다. `starship.toml` 은 starship 1.22(Linux 배포판 버전)에서도 동작해야 한다.
+- **프롬프트 심볼은 Nerd Font 글리프**: 이모지를 쓰지 않는다. `starship.toml`·`eza/theme.yml` 의 글리프는 v2·v3 공통 BMP 영역(U+E000~F8FF)만 쓴다 — v3 전용 5자리(U+F0000~)는 v2 폰트를 내장한 터미널(Termius 등)에서 깨진다. 글리프를 편집 도구로 옮기다 빈 문자열로 사라진 적이 있으니, 고친 뒤 `od`·Python 으로 코드포인트가 실제로 들어 있는지 확인한다. `starship.toml` 은 starship 1.22(Linux 배포판 버전)에서도 동작해야 한다.
 
 ## 검증
 
@@ -102,6 +103,9 @@
 # 문법
 bash -n install.sh uninstall.sh scripts/check-agents-yaml.sh claude/statusline-command.sh agy/statusline-command.sh scripts/test-agy-statusline.sh scripts/test-codex-status-line.sh scripts/test-codex-cost-hook.sh scripts/test-windows-paths.sh scripts/test-windows-git.sh gitbash/bashrc gitbash/bash_profile
 python3 -m py_compile codex/status-line.py codex/cost-hook.py codex/hooks.py agy/settings.py
+
+# 글리프 — v3 전용 5자리 코드가 없어야 한다 (결과 [])
+python3 -c "import sys;print([hex(ord(c)) for f in sys.argv[1:] for c in open(f,encoding='utf-8').read() if ord(c)>=0xF0000])" starship/starship.toml eza/theme.yml
 zsh -n zsh/zshrc.macos zsh/zshrc.linux zsh/zshrc.local.example
 
 # 실제 홈에 영향 없이 설치/제거 왕복 (패키지는 이미 설치된 머신 기준)
