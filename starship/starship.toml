@@ -1,6 +1,7 @@
 "$schema" = 'https://starship.rs/config-schema.json'
 
 # 2줄 프롬프트 · Catppuccin Mocha 팔레트 · Nerd Font 글리프 (이모지 미사용)
+# 글리프는 v2·v3 공통 BMP 영역(U+E000~F8FF)만 쓴다 — v3 전용 5자리(U+F0000~)는 v2 폰트(Termius 등)에서 □로 깨진다
 # 요구: starship >= 1.16 (palettes, os 모듈), Nerd Font 터미널 폰트 (install.sh 2.5 단계)
 
 add_newline = true
@@ -23,12 +24,12 @@ vimcmd_symbol = "[❮](bold green)"
 
 [status]
 disabled = false
-symbol = " "
+symbol = " "
 success_symbol = ""
-not_found_symbol = "󰍉 "
-not_executable_symbol = " "
-sigint_symbol = "󰜺 "
-signal_symbol = "󱐋 "
+not_found_symbol = " "
+not_executable_symbol = " "
+sigint_symbol = " "
+signal_symbol = " "
 style = "bold red"
 format = '[$symbol$common_meaning$signal_name$maybe_int]($style) '
 
@@ -39,14 +40,14 @@ style = "subtext0"
 format = "[$symbol]($style) "
 
 [os.symbols]
-Macos = ""
-Linux = ""
-RockyLinux = ""
-RedHatEnterprise = "󱄛"
-Ubuntu = ""
-Debian = ""
-Alpine = ""
-Windows = "󰍲"
+Macos = ""
+Linux = ""
+RockyLinux = ""
+RedHatEnterprise = ""
+Ubuntu = ""
+Debian = ""
+Alpine = ""
+Windows = ""
 
 [username]
 show_always = false
@@ -56,7 +57,7 @@ format = "[$user]($style) "
 
 [hostname]
 ssh_only = true
-ssh_symbol = "󰣀 "
+ssh_symbol = " "
 style = "bold red"
 format = "on [$ssh_symbol$hostname]($style) "
 
@@ -66,17 +67,17 @@ read_only_style = "red"
 truncation_length = 3
 truncate_to_repo = true
 truncation_symbol = "…/"
-read_only = " "
+read_only = " "
 format = "in [$path]($style)[$read_only]($read_only_style) "
 
 [directory.substitutions]
-"~/workspace" = "󰙅 ws"
-"Documents" = "󰈙 Documents"
-"Downloads" = " Downloads"
+"~/workspace" = " ws"
+"Documents" = " Documents"
+"Downloads" = " Downloads"
 
 # ── git ────────────────────────────────────────────────────
 [git_branch]
-symbol = " "
+symbol = " "
 style = "bold mauve"
 format = "on [$symbol$branch(:$remote_branch)]($style) "
 
@@ -88,7 +89,7 @@ ahead = "⇡${count}"
 behind = "⇣${count}"
 diverged = "⇕⇡${ahead_count}⇣${behind_count}"
 untracked = "?${count}"
-stashed = "󰏗"
+stashed = ""
 modified = "!${count}"
 staged = "+${count}"
 renamed = "»${count}"
@@ -106,38 +107,38 @@ format = '([+$added]($added_style) )([-$deleted]($deleted_style) )'
 
 # ── 언어/런타임 (해당 프로젝트에서만 표시) ───────────────────
 [rust]
-symbol = " "
+symbol = " "
 style = "bold peach"
 format = "via [$symbol($version )]($style)"
 
 [python]
-symbol = " "
+symbol = " "
 style = "bold yellow"
 format = 'via [$symbol${pyenv_prefix}(${version} )(\($virtualenv\) )]($style)'
 
 [nodejs]
-symbol = " "
+symbol = " "
 style = "bold green"
 format = "via [$symbol($version )]($style)"
 
 [bun]
-symbol = " "
+symbol = " "
 style = "bold rosewater"
 format = "via [$symbol($version )]($style)"
 
 [java]
-symbol = " "
+symbol = " "
 style = "bold red"
 format = "via [$symbol($version )]($style)"
 
 [golang]
-symbol = " "
+symbol = " "
 style = "bold sky"
 format = "via [$symbol($version )]($style)"
 
 # ── 컨테이너/클러스터 컨텍스트 ──────────────────────────────
 [docker_context]
-symbol = " "
+symbol = " "
 style = "bold blue"
 format = "via [$symbol$context]($style) "
 only_with_files = true
@@ -145,7 +146,7 @@ only_with_files = true
 [kubernetes]
 # 기본 비활성 — k8s 작업 디렉터리에서만 켜려면 detect_folders/detect_files 조정
 disabled = true
-symbol = "󱃾 "
+symbol = " "
 style = "bold blue"
 format = 'on [$symbol$context( \($namespace\))]($style) '
 
@@ -157,7 +158,7 @@ format = "took [$duration]($style) "
 style = "bold yellow"
 
 [jobs]
-symbol = " "
+symbol = " "
 style = "bold sky"
 number_threshold = 1
 format = "[$symbol$number]($style) "

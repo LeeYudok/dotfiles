@@ -15,6 +15,8 @@ dotfiles/
 ├── .gitattributes             # 줄바꿈 고정 — 기본 LF, .ps1/.cmd 는 CRLF 그대로
 ├── starship/
 │   └── starship.toml          # Catppuccin Mocha 팔레트 2줄 프롬프트, Nerd Font 글리프 (OS 공통)
+├── eza/
+│   └── theme.yml              # eza 아이콘 덮어쓰기 — Nerd Font v2 폰트에서도 깨지지 않게
 ├── zsh/
 │   ├── zshrc.macos            # macOS 용 — brew 기반(Apple Silicon/Intel 자동), eza/bat/zoxide/fzf/pyenv/pnpm/플러그인
 │   ├── zshrc.linux            # Linux 서버용 — 같은 구조의 미니멀판, 도구는 있을 때만 활성
@@ -57,7 +59,7 @@ cd dotfiles && ./install.sh
 |---|---|---|
 | 0 | 의존성 검사 | Git Bash/MSYS/Cygwin 이면 "WSL2 에서 실행" 안내와 함께 중단. `curl`·`unzip`·`python3`, macOS 는 `brew`, Linux 는 `dnf`/`apt-get` 이 없으면 **홈 파일을 하나도 만들지 않고** 종료. `~/.claude/settings.json`·`~/.gemini/antigravity-cli/settings.json` 이 깨진 JSON 이거나 `~/.codex/config.toml` 을 편집할 수 없는 상태(깨진 TOML 등)여도 여기서 중단. |
 | 1 | 패키지 설치 | macOS: brew 로 `starship eza bat zoxide fzf fd jq zsh-autosuggestions zsh-syntax-highlighting` (없을 때만). Linux: `zsh`(dnf/apt), `starship`(공식 스크립트, sudo 없으면 `~/.local/bin`), 자동완성 플러그인 2종(dnf 는 EPEL 활성화 후), `jq`(sudo 가능할 때만, 아니면 경고), `zoxide`·`fzf`·`eza`(GitHub 최신 릴리스 바이너리 → `~/.local/bin`, sudo 불필요, x86_64/aarch64). |
-| 2 | starship.toml | `starship/starship.toml` → `~/.config/starship.toml` |
+| 2 | starship.toml · eza 테마 | `starship/starship.toml` → `~/.config/starship.toml`, `eza/theme.yml` → `~/.config/eza/theme.yml`(v3 전용 eza 아이콘을 v2·v3 공통 글리프로 덮어씀) |
 | 2.5 | Nerd Fonts | GitHub 최신 릴리스에서 `JetBrainsMono`, `D2Coding` zip 을 받아 `.ttf`/`.otf` 를 폰트 디렉터리(macOS `~/Library/Fonts`, Linux `~/.local/share/fonts` + `fc-cache`)에 설치. 폰트별 `.nerd-font-<name>-installed` 마커 파일로 재설치 방지. **WSL 에서는 건너뛰고 안내만** 한다 — [Windows (WSL2)](#windows-wsl2) 참고. |
 | 3 | zshrc | OS 에 맞는 `zsh/zshrc.*` → `~/.zshrc`. 머신별 alias/함수는 `~/.zshrc.local`(미추적) 에 두며 스크립트가 만들지 않는다 — 없으면 안내만. |
 | 4 | Claude statusline | `claude/statusline-command.sh` → `~/.claude/statusline-command.sh` (+x). 스크립트 런타임에 `jq` 필요 — 없으면 경고만. 이어서 **python3** 로 `~/.claude/settings.json` 의 `statusLine` 키만 merge (다른 키 불변, 파일 없으면 생성). 같은 디렉터리의 임시 파일에 쓰고 `os.replace` 로 교체하므로 중단돼도 원본이 깨지지 않고, 기존 파일 mode 를 보존한다. |
@@ -67,7 +69,7 @@ cd dotfiles && ./install.sh
 
 런타임 의존성: `curl`, `unzip`, `python3`(0 단계에서 검사). macOS 는 Homebrew 필수. Windows 는 WSL2 안에서 실행한다. `jq` 는 statusline 스크립트(Claude·Antigravity) 런타임 전용이라 1 단계에서 자동 설치한다(Linux 는 sudo 가능할 때만).
 
-멱등(idempotent): 재실행해도 안전하다. 배치 대상 파일(`starship.toml`·`.zshrc`·`statusline-command.sh`(Claude·Antigravity)·`~/.codex/cost-hook.py`)은 기존 파일과 내용이 다를 때만 `.bak` 백업 후 덮어쓴다 — `.bak` 은 1세대만 유지되므로 두 번 연속 다른 내용을 배치하면 첫 백업은 사라진다.
+멱등(idempotent): 재실행해도 안전하다. 배치 대상 파일(`starship.toml`·`eza/theme.yml`·`.zshrc`·`statusline-command.sh`(Claude·Antigravity)·`~/.codex/cost-hook.py`)은 기존 파일과 내용이 다를 때만 `.bak` 백업 후 덮어쓴다 — `.bak` 은 1세대만 유지되므로 두 번 연속 다른 내용을 배치하면 첫 백업은 사라진다.
 
 최초 실행 시 덮어쓸 파일의 원본과 설치 기록을 `~/.config/dotfiles/backup/` 에 남긴다(`<name>.orig` / `<name>.absent`, `brew-installed.txt`·`pkg-installed.txt`·`bin-installed.txt`, `settings.json.orig`, `codex-config.toml.orig`, `codex-hooks.json.absent`/`.present`, `agy-settings.json.orig`/`.absent`). 재실행해도 이 기록은 갱신하지 않으므로 몇 번을 돌려도 "설치 전 원본"이 보존된다. Nerd Font 는 설치한 파일명을 `.nerd-font-<name>-files.txt` manifest 로 남긴다.
 
@@ -220,6 +222,7 @@ starship 1.26 기준. `[palettes.catppuccin_mocha]` 로 색을 이름으로 참�
 - 언어/런타임은 해당 프로젝트 파일이 있을 때만: rust/python(pyenv·venv)/node/bun/java/go, docker context 는 compose 파일 있을 때만. kubernetes 모듈은 기본 비활성.
 - `directory.substitutions` 로 `~/workspace` → `ws` 축약
 - 터미널 폰트를 JetBrainsMono Nerd Font(또는 D2Coding Nerd Font)로 지정해야 글리프가 깨지지 않는다 (2.5 단계에서 설치). WSL·Termux 처럼 터미널이 다른 곳에 있으면 그쪽에 지정한다 — [Windows (WSL2)](#windows-wsl2), [Android (Termux + proot-distro)](#android-termux--proot-distro). Linux 서버의 starship 1.22 에서도 동작(palettes 는 1.9+, os 모듈 1.16+).
+- 글리프는 Nerd Font v2·v3 공통 BMP 영역(U+E000~F8FF)만 쓴다. v3 에서 추가된 5자리 코드(U+F0000~)는 Termius 처럼 v2 계열 폰트를 내장한 터미널에서 □로 깨지기 때문이다. eza 도 기본 아이콘 일부가 v3 전용이라 `eza/theme.yml` 로 덮어쓴다(색상 출력일 때 적용 — `ls`/`ll`/`la` alias 는 기본으로 색상을 쓴다). 새 아이콘을 넣을 때 확인: `python3 -c "import sys;print([hex(ord(c)) for c in open(sys.argv[1]).read() if ord(c)>=0xF0000])" starship/starship.toml` 결과가 `[]` 여야 한다.
 
 ## zsh (zshrc.macos / zshrc.linux)
 

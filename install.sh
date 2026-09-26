@@ -8,7 +8,7 @@
 #   0.   의존성 사전 검사 — 누락 시 홈 파일을 하나도 바꾸지 않고 종료. Git Bash/MSYS/Cygwin 은 지원하지 않음(WSL2 에서 실행)
 #   1.   zsh / starship / 플러그인 / jq 설치 (없을 때만; macOS 는 eza·bat·zoxide 포함)
 #        Linux 는 zoxide·fzf·eza 를 GitHub 릴리스에서 ~/.local/bin 에 설치 (sudo 불필요)
-#   2.   starship.toml 배치 (~/.config/starship.toml)
+#   2.   starship.toml 배치 (~/.config/starship.toml) + eza 아이콘 테마 배치 (~/.config/eza/theme.yml)
 #   2.5. Nerd Fonts 설치 (JetBrainsMono, D2Coding; 마커 파일로 재설치 방지)
 #        WSL 에서는 건너뛰고 안내만 — 글리프는 Windows 쪽 터미널이 그리므로 폰트도 Windows 에 설치해야 한다
 #   3.   OS 에 맞는 zshrc 배치 (~/.zshrc). 머신별 alias/함수는 ~/.zshrc.local (미추적, 이 스크립트가 만들지 않음)
@@ -196,9 +196,11 @@ else
   fi
 fi
 
-# ── 2. starship.toml ───────────────────────────────────────
+# ── 2. starship.toml · eza theme.yml ───────────────────────
 deploy_file starship/starship.toml "$HOME/.config/starship.toml" starship.toml
-info "starship.toml 배치 완료"
+# eza 기본 아이콘 중 Nerd Font v3 전용 코드를 v2·v3 공통 글리프로 덮어쓴다 (eza 가 없어도 배치 — 나중에 설치해도 적용)
+deploy_file eza/theme.yml "$HOME/.config/eza/theme.yml" eza-theme.yml
+info "starship.toml · eza theme.yml 배치 완료"
 
 # ── 2.5. Nerd Fonts (JetBrainsMono, D2Coding) ──────────────
 if [ "$OS" = "Darwin" ]; then FONT_DIR="$HOME/Library/Fonts"; else FONT_DIR="$HOME/.local/share/fonts"; fi

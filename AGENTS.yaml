@@ -39,7 +39,7 @@ nodes:
 # 진입점
 - id: install
   type: bash-script
-  label: '부트스트랩. 0 의존성 검사 → 1 패키지 → 2 starship.toml → 2.5 Nerd Fonts → 3 zshrc → 4 Claude statusline → 5 Codex → 6 Antigravity → 7 chsh 안내'
+  label: '부트스트랩. 0 의존성 검사 → 1 패키지 → 2 starship.toml·eza theme.yml → 2.5 Nerd Fonts → 3 zshrc → 4 Claude statusline → 5 Codex → 6 Antigravity → 7 chsh 안내'
   path: install.sh
 - id: uninstall
   type: bash-script
@@ -62,6 +62,11 @@ nodes:
   label: '프롬프트 정의. Catppuccin Mocha, 2줄, Nerd Font 글리프. starship 1.22 호환'
   path: starship/starship.toml
   deploy_to: '~/.config/starship.toml'
+- id: eza-theme
+  type: config
+  label: 'eza 아이콘 덮어쓰기. v3 전용 코드를 v2·v3 공통 글리프로'
+  path: eza/theme.yml
+  deploy_to: '~/.config/eza/theme.yml'
 - id: zshrc-macos
   type: config
   label: 'Darwin 용 zshrc. HOMEBREW_PREFIX 자동 감지'
@@ -181,6 +186,7 @@ nodes:
 
 edges:
 - {from: install, to: starship-toml, rel: deploys}
+- {from: install, to: eza-theme, rel: deploys}
 - {from: install, to: zshrc-macos, rel: deploys, env: [HOME]}
 - {from: install, to: zshrc-linux, rel: deploys, env: [HOME]}
 - {from: install, to: claude-statusline, rel: deploys}
@@ -268,7 +274,7 @@ policies:
 - {id: zshrc-structure, rule: '두 zshrc 는 같은 섹션 순서, 도구는 있을 때만, zsh-syntax-highlighting 은 맨 마지막', source: AGENTS.md, files: [zsh/zshrc.macos, zsh/zshrc.linux]}
 - {id: windows-encoding, rule: '.ps1 은 UTF-8 BOM·CRLF, .cmd 는 ASCII·CRLF, gitbash/ 는 LF. PowerShell 5.1 문법만', source: AGENTS.md, files: [.gitattributes]}
 - {id: offline-windows, rule: '인터넷에서 받지 않는다. 설치한 Git·추가한 PATH 항목만 기록·제거. Windows Terminal 은 fragment 로만', source: AGENTS.md, files: [windows/install-git.ps1, windows/uninstall-git.ps1]}
-- {id: prompt-glyphs, rule: '프롬프트 심볼은 Nerd Font 글리프만, 이모지 금지', source: AGENTS.md, files: [starship/starship.toml]}
+- {id: prompt-glyphs, rule: '프롬프트 심볼은 Nerd Font 글리프만, 이모지 금지. v2·v3 공통 BMP(U+E000~F8FF)만, v3 전용 5자리(U+F0000~) 금지', source: AGENTS.md, files: [starship/starship.toml, eza/theme.yml]}
 - {id: docs-sync, rule: '동작을 바꾸면 README 해당 절과 스크립트 헤더 주석을 같은 커밋에서 갱신', source: AGENTS.md}
 - {id: agents-yaml-sync, rule: '구성요소·경로·명령·환경변수가 바뀌면 AGENTS.md 와 AGENTS.yaml 을 함께 고치고 scripts/check-agents-yaml.sh 를 돌린다', source: AGENTS.md}
 
@@ -276,6 +282,7 @@ known_issues:
 - {id: trap-return-leaks, summary: 'bash 의 trap ... RETURN 은 함수 밖으로 새어 이후 모든 함수 리턴에 발화한다. 임시 디렉터리 정리는 단일 지점에서', source: AGENTS.md, files: [install.sh]}
 - {id: ps51-bom, summary: 'Windows PowerShell 5.1 은 BOM 없는 .ps1 의 한글을 cp949 로 읽어 구문까지 깨진다', source: AGENTS.md, files: [scripts/test-windows-git.sh]}
 - {id: gitbash-autocreates-profile, summary: '~/.bash_profile 이 없으면 Git Bash 가 스스로 만들어 역연산에서 빠진다. 그래서 함께 배치한다', source: AGENTS.md, files: [gitbash/bash_profile]}
+- {id: nerd-font-v2-terminals, summary: 'Termius 등 일부 터미널은 Nerd Font v2 계열 폰트를 내장해 v3 전용 5자리 글리프(U+F0000~)가 깨진다. starship·eza 글리프는 BMP 영역만 쓴다', source: AGENTS.md, files: [starship/starship.toml, eza/theme.yml]}
 - {id: roundtrip-downloads-fonts, summary: '임시 HOME 왕복은 Nerd Font 를 실제로 받는다(수십 MB). 폰트 무관 변경이면 .nerd-font-<name>-installed 마커로 건너뛴다', source: AGENTS.md}
 - {id: macos-brew-cache, summary: 'macOS 임시 HOME 왕복 뒤 Library/Caches 에 brew 캐시가 남는다. 잔여 파일 검사에서 제외', source: AGENTS.md}
 - {id: identifier-scan-self-match, summary: '식별자 검사 패턴(glpat-, ghp_)이 명령을 담은 AGENTS.md·AGENTS.yaml 자신에 걸린다. 두 파일은 검사에서 제외', source: AGENTS.md}
