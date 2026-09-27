@@ -237,6 +237,7 @@ starship 1.26 기준. `[palettes.catppuccin_mocha]` 로 색을 이름으로 참�
 - zoxide 가 `cd` 를 대체(`cd <키워드>` 로 점프).
 - 시크릿(API 키 등)은 `~/.secrets.zsh`(mode 600, 미추적)에만 두고 zshrc 는 `source` 만 한다. zshrc 에 값을 직접 쓰지 않는다.
 - Linux 판은 starship/eza/zoxide/fzf 가 없으면 각각 기본 프롬프트·`ls --color`·일반 `cd` 로 폴백.
+- Linux 판은 로케일이 UTF-8 이 아니면(`LANG` 이 비어 `POSIX` 인 컨테이너·Termux proot 등) 설치된 로케일 중 `ko_KR.UTF-8` → `C.UTF-8` → `en_US.UTF-8` 순으로 골라 `LANG` 을 맞춘다. 그대로 두면 zsh 가 한글을 바이트 단위로 세어 입력·삭제 때 커서가 밀린다. 이미 UTF-8 이면 건드리지 않는다.
 
 ## Claude Code statusline
 
