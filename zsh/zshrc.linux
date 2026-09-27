@@ -7,6 +7,21 @@ typeset -U path PATH
 [ -d "$HOME/.local/bin" ] && path=("$HOME/.local/bin" $path)
 export EDITOR=vim
 
+# locale — LANG 이 비었거나 C/POSIX 면 zsh 가 한글을 바이트 단위로 세어 입력·삭제 때 커서가 밀린다.
+# 컨테이너·proot 는 ko_KR 이 생성돼 있지 않은 경우가 많아, 설치된 UTF-8 로케일 중 앞선 것을 쓴다.
+if [[ "${LC_ALL:-${LC_CTYPE:-$LANG}}" != *[Uu][Tt][Ff]*8* ]]; then
+  () {
+    local l avail=${${(L)"$(locale -a 2>/dev/null)"}//-/}
+    for l in ko_KR.UTF-8 C.UTF-8 en_US.UTF-8; do
+      if (( ${${(f)avail}[(Ie)${(L)l//-/}]} )); then
+        unset LC_ALL LC_CTYPE
+        export LANG=$l
+        return
+      fi
+    done
+  }
+fi
+
 # ── 히스토리 / 셸 옵션 ─────────────────────────────────────
 HISTFILE=~/.zsh_history
 HISTSIZE=50000
