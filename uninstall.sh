@@ -3,7 +3,7 @@
 #
 # 사용법:
 #   ./uninstall.sh            # 배치 파일 복원/제거 + statusLine(Claude·Antigravity)·Codex status_line 키 복원 + Nerd Font 제거
-#   ./uninstall.sh --purge    # 위에 더해 install.sh 가 새로 설치한 패키지/바이너리까지 제거
+#   ./uninstall.sh --purge    # 위에 더해 install.sh 가 새로 설치한 패키지/바이너리/플러그인 디렉터리까지 제거
 #   ./uninstall.sh --keep-backup   # ~/.config/dotfiles/backup 을 남겨둠 (기본은 복원 후 삭제)
 #
 # 복원 기준은 install.sh 가 최초 실행 때 ~/.config/dotfiles/backup/ 에 남긴 기록:
@@ -147,7 +147,7 @@ for name in JetBrainsMono D2Coding; do
 done
 if [ "$OS" != "Darwin" ] && command -v fc-cache >/dev/null; then fc-cache -f "$FONT_DIR" >/dev/null || true; fi
 
-# ── 5. --purge: install.sh 가 새로 설치한 패키지/바이너리 제거 ─
+# ── 5. --purge: install.sh 가 새로 설치한 패키지/바이너리/플러그인 제거 ─
 if [ "$PURGE" = 1 ]; then
   if [ "$OS" = "Darwin" ] && [ -s "$BACKUP_DIR/brew-installed.txt" ]; then
     while IFS= read -r pkg; do
@@ -161,6 +161,16 @@ if [ "$PURGE" = 1 ]; then
       info "삭제: $bin"
     done < "$BACKUP_DIR/bin-installed.txt"
   fi
+  # sudo 없이 tarball 로 설치한 플러그인 — 기록된 경로 중 플러그인 디렉터리 아래 것만 지운다
+  if [ -s "$BACKUP_DIR/plugin-installed.txt" ]; then
+    while IFS= read -r dir; do
+      case "$dir" in *..*) continue ;; "$HOME/.local/share/zsh/plugins/"?*) ;; *) continue ;; esac
+      [ -d "$dir" ] || continue
+      rm -rf "$dir"
+      info "삭제: $dir"
+    done < "$BACKUP_DIR/plugin-installed.txt"
+    rmdir "$HOME/.local/share/zsh/plugins" "$HOME/.local/share/zsh" 2>/dev/null || true   # 비어 있을 때만 제거
+  fi
   if [ "$OS" != "Darwin" ] && [ -s "$BACKUP_DIR/pkg-installed.txt" ]; then
     pkgs="$(tr '\n' ' ' < "$BACKUP_DIR/pkg-installed.txt")"
     info "패키지 제거: $pkgs"
@@ -168,6 +178,7 @@ if [ "$PURGE" = 1 ]; then
     elif command -v apt-get >/dev/null; then sudo apt-get remove -y $pkgs || info "경고: apt-get remove 실패"; fi
   fi
   [ -s "$BACKUP_DIR/brew-installed.txt" ] || [ -s "$BACKUP_DIR/bin-installed.txt" ] || [ -s "$BACKUP_DIR/pkg-installed.txt" ] \
+    || [ -s "$BACKUP_DIR/plugin-installed.txt" ] \
     || info "--purge: install.sh 가 새로 설치한 패키지 기록 없음 (이미 있던 도구는 건드리지 않음)"
 else
   info "패키지(starship/eza/bat/zoxide/fzf/fd/플러그인)는 유지 — 제거하려면 --purge"
