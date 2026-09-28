@@ -134,6 +134,10 @@ nodes:
   path: .github/workflows/check.yml
 
 # 시험
+- id: test-install-safety
+  type: test
+  label: '임시 HOME·모의 apt/dnf로 반복 제거·파일 보존·Claude 사전 검사·설치 기록·purge 검증'
+  path: scripts/test-install-safety.sh
 - id: test-codex-status-line
   type: test
   label: 'status-line.py 임시 HOME 왕복. status_line 순서까지 검증'
@@ -179,6 +183,9 @@ nodes:
 - id: dnf-apt
   type: package-manager
   label: 'dnf 또는 apt-get (Linux)'
+- id: package-query
+  type: cli
+  label: 'Linux 플러그인 설치 여부 조회: dnf는 rpm, apt-get은 dpkg-query (0 단계 필수 검사)'
 - id: starship-installer
   type: external-url
   label: 'https://starship.rs/install.sh — 배포판 패키지가 없을 때'
@@ -199,6 +206,9 @@ nodes:
   label: '반입한 Git for Windows 설치 파일 (windows/offline/, 미추적)'
 
 edges:
+- {from: test-install-safety, to: install, rel: tests}
+- {from: test-install-safety, to: uninstall, rel: tests}
+- {from: install, to: package-query, rel: requires}
 - {from: ci-check, to: check-identifiers, rel: invokes}
 - {from: ci-check, to: check-syntax, rel: invokes}
 - {from: install, to: starship-toml, rel: deploys}
@@ -249,6 +259,7 @@ commands:
     install_twice: 'T="$(mktemp -d)"; HOME="$T" ./install.sh && HOME="$T" ./install.sh'
     uninstall_clean: 'HOME="$T" ./uninstall.sh && find "$T" -type f -not -path "*/Library/Caches/*"'
   tests:
+    install_safety: scripts/test-install-safety.sh
     claude_statusline: 'echo ''{"workspace":{"current_dir":"/tmp"},"model":{"display_name":"test"}}'' | bash claude/statusline-command.sh'
     codex_status_line: scripts/test-codex-status-line.sh
     codex_cost_hook: scripts/test-codex-cost-hook.sh
@@ -273,7 +284,7 @@ env_keys:
 policies:
 - {id: public-repo, rule: '어느 머신에나 적용 가능한 것만 커밋. 호스트명·IP·내부 URL·토큰·사용자명 경로 금지', source: AGENTS.md}
 - {id: idempotent, rule: 'install.sh·uninstall.sh 는 재실행해도 결과가 같다', source: AGENTS.md}
-- {id: fail-before-change, rule: '0 단계 실패 시 홈에 아무것도 만들지 않는다. 새 전제 조건은 0 단계에', source: AGENTS.md}
+- {id: fail-before-change, rule: '0 단계 실패 시 홈에 아무것도 만들지 않는다. 새 전제 조건은 0 단계에. Claude JSON은 객체인지 검사, Linux는 rpm/dpkg-query 필수', source: AGENTS.md}
 - {id: deploy-file-only, rule: '홈 파일 배치는 deploy_file 로만(.orig/.absent → .bak → 복사). cp 직접 호출 금지', source: AGENTS.md, files: [install.sh]}
 - {id: settings-key-merge, rule: 'Claude/Antigravity settings.json 은 statusLine 키만, 원자적 쓰기·mode 보존, 깨진 JSON 이면 중단', source: AGENTS.md, files: [install.sh, agy/settings.py]}
 - {id: codex-config-key-merge, rule: 'config.toml 은 [tui] status_line 줄만 교체, 나머지 바이트 보존. 로직은 status-line.py 한 곳', source: AGENTS.md, files: [codex/status-line.py]}
@@ -281,7 +292,7 @@ policies:
 - {id: cost-hook-never-blocks, rule: 'cost-hook.py 는 어떤 오류든 exit 0. 단가표를 고치면 출처 URL·확인 날짜 주석도 갱신', source: AGENTS.md, files: [codex/cost-hook.py]}
 - {id: no-dir-for-absent-tool, rule: 'Codex·Antigravity 를 쓰지 않는 머신에서는 ~/.codex, ~/.gemini 를 만들지 않는다', source: AGENTS.md, files: [install.sh]}
 - {id: wsl-home-only, rule: 'WSL 에서는 $HOME 밖을 건드리지 않는다. 폰트는 안내만', source: AGENTS.md, files: [install.sh]}
-- {id: remove-only-installed, rule: '--purge 는 manifest 에 기록된 패키지·폰트 파일만 제거', source: AGENTS.md, files: [uninstall.sh]}
+- {id: remove-only-installed, rule: '--purge 는 manifest 에 기록된 패키지·폰트 파일만 제거. 플러그인·EPEL은 새로 설치한 것만 기록. 기록 없는 파일·백업·Claude 설정·Codex 훅은 보존', source: AGENTS.md, files: [uninstall.sh]}
 - {id: user-files-untouched, rule: '~/.zshrc.local, ~/.secrets.zsh, ~/.claude/CLAUDE.md 는 만들지도 지우지도 않는다', source: AGENTS.md}
 - {id: install-uninstall-pair, rule: 'install.sh 가 새로 만드는 것은 같은 변경에서 uninstall.sh 에 역연산', source: AGENTS.md, files: [install.sh, uninstall.sh]}
 - {id: step-numbering-sync, rule: 'install.sh 섹션 번호·헤더 주석·README 단계 표는 같은 번호', source: AGENTS.md, files: [install.sh, README.md]}

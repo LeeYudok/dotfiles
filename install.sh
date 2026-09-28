@@ -5,9 +5,10 @@
 #   git clone https://github.com/LeeYudok/dotfiles.git && cd dotfiles && ./install.sh
 #
 # 동작 (섹션 번호 = 아래 주석 번호 = README 단계 표):
-#   0.   의존성 사전 검사 — 누락 시 홈 파일을 하나도 바꾸지 않고 종료. Git Bash/MSYS/Cygwin 은 지원하지 않음(WSL2 에서 실행)
+#   0.   의존성·설정 사전 검사 — 누락·잘못된 설정은 홈 변경 전에 종료. Claude JSON은 객체만 허용. Git Bash/MSYS/Cygwin 미지원
 #   1.   zsh / starship / 플러그인 / jq 설치 (없을 때만; macOS 는 eza·bat·zoxide 포함)
 #        Linux 는 zoxide·fzf·eza 를 GitHub 릴리스에서 ~/.local/bin 에 설치 (sudo 불필요)
+#        Linux 플러그인은 패키지별로 설치 여부를 확인해 새로 설치한 것만 기록
 #   2.   starship.toml 배치 (~/.config/starship.toml) + eza 아이콘 테마 배치 (~/.config/eza/theme.yml)
 #   2.5. Nerd Fonts 설치 (JetBrainsMono, D2Coding; 마커 파일로 재설치 방지)
 #        WSL 에서는 건너뛰고 안내만 — 글리프는 Windows 쪽 터미널이 그리므로 폰트도 Windows 에 설치해야 한다
@@ -21,7 +22,7 @@
 #        + settings.json 의 statusLine 키만 merge (agy/settings.py). agy 명령 또는 ~/.gemini/antigravity-cli 가 있을 때만
 #   7.   기본 셸이 zsh 가 아니면 chsh 안내
 #
-# 런타임 의존성: curl, unzip, python3 (0 단계에서 검사). macOS 는 Homebrew 필수. Windows 는 WSL2 안에서 실행.
+# 런타임 의존성: curl, unzip, python3 (0 단계에서 검사). macOS는 Homebrew, Linux는 rpm 또는 dpkg-query도 필요.
 #   jq 는 statusline 스크립트(Claude·Antigravity) 런타임 전용 — 1 단계에서 brew/dnf/apt 로 자동 설치 (sudo 불가 시 경고만).
 # 멱등(idempotent): 재실행해도 안전하다. 배치 대상은 내용이 다를 때만 .bak 백업 후 덮어쓴다.
 #
@@ -52,15 +53,21 @@ for cmd in curl unzip python3; do command -v "$cmd" >/dev/null || missing+=("$cm
 if [ "$OS" = "Darwin" ]; then
   command -v brew >/dev/null || missing+=("brew (https://brew.sh)")
 else
-  command -v dnf >/dev/null || command -v apt-get >/dev/null || missing+=("dnf 또는 apt-get")
+  if command -v dnf >/dev/null; then
+    command -v rpm >/dev/null || missing+=("rpm")
+  elif command -v apt-get >/dev/null; then
+    command -v dpkg-query >/dev/null || missing+=("dpkg-query")
+  else
+    missing+=("dnf 또는 apt-get")
+  fi
 fi
 if [ "${#missing[@]}" -gt 0 ]; then
   die "필수 명령 누락: ${missing[*]} — 설치 후 다시 실행 (홈 파일은 변경하지 않았음)"
 fi
-# settings.json 이 있는데 깨진 JSON 이면 4 단계에서 손댈 수 없으므로 시작 전에 막는다
+# settings.json이 깨진 JSON이거나 최상위 객체가 아니면 4 단계에서 실패하므로 시작 전에 막는다
 if [ -f "$HOME/.claude/settings.json" ]; then
-  python3 -c 'import json,sys; json.load(open(sys.argv[1]))' "$HOME/.claude/settings.json" 2>/dev/null \
-    || die "$HOME/.claude/settings.json 이 올바른 JSON 이 아님 — 수동으로 고친 뒤 다시 실행 (홈 파일은 변경하지 않았음)"
+  python3 -c 'import json,sys; sys.exit(0 if isinstance(json.load(open(sys.argv[1])), dict) else 1)' "$HOME/.claude/settings.json" 2>/dev/null \
+    || die "$HOME/.claude/settings.json 이 올바른 JSON 객체가 아님 — 수동으로 고친 뒤 다시 실행 (홈 파일은 변경하지 않았음)"
 fi
 # ~/.codex/config.toml 이 깨진 TOML 이거나 [tui] 표기가 아니면 5 단계에서 손댈 수 없으므로 시작 전에 막는다
 if [ -f "$HOME/.codex/config.toml" ]; then
@@ -136,17 +143,20 @@ else
       record bin-installed.txt "$HOME/.local/bin/starship"
     fi
   }
-  if [ ! -f /usr/share/zsh-autosuggestions/zsh-autosuggestions.zsh ] || [ ! -f /usr/share/zsh-syntax-highlighting/zsh-syntax-highlighting.zsh ]; then
-    info "zsh-autosuggestions / zsh-syntax-highlighting 설치"
+  # 파일 경로는 배포판마다 다르므로 패키지 DB로 확인한다. 기존 패키지는 manifest에 넣지 않는다.
+  for pkg in zsh-autosuggestions zsh-syntax-highlighting; do
     if command -v dnf >/dev/null; then
-      rpm -q epel-release >/dev/null 2>&1 || sudo dnf install -y epel-release || true
-      { sudo dnf install -y zsh-autosuggestions zsh-syntax-highlighting && record pkg-installed.txt zsh-autosuggestions && record pkg-installed.txt zsh-syntax-highlighting; } \
-        || info "경고: 자동완성 플러그인 설치 실패 (sudo/repo 확인 필요)"
+      rpm -q "$pkg" >/dev/null 2>&1 && continue
+      rpm -q epel-release >/dev/null 2>&1 \
+        || { sudo dnf install -y epel-release && record pkg-installed.txt epel-release; } || true
+      { sudo dnf install -y "$pkg" && record pkg-installed.txt "$pkg"; } \
+        || info "경고: $pkg 설치 실패 (sudo/repo 확인 필요)"
     elif command -v apt-get >/dev/null; then
-      { sudo apt-get install -y zsh-autosuggestions zsh-syntax-highlighting && record pkg-installed.txt zsh-autosuggestions && record pkg-installed.txt zsh-syntax-highlighting; } \
-        || info "경고: 자동완성 플러그인 설치 실패 (sudo/repo 확인 필요)"
+      [ "$(dpkg-query -W -f='${db:Status-Status}' "$pkg" 2>/dev/null)" = 'installed' ] && continue
+      { sudo apt-get install -y "$pkg" && record pkg-installed.txt "$pkg"; } \
+        || info "경고: $pkg 설치 실패 (sudo/repo 확인 필요)"
     fi
-  fi
+  done
   # jq — statusline 런타임 전용. sudo 가 없으면 설치를 건너뛰고 경고만 (셸 환경 자체는 jq 없이도 동작)
   command -v jq >/dev/null || {
     if sudo -n true 2>/dev/null; then
