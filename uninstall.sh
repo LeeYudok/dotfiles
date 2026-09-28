@@ -7,7 +7,7 @@
 #   ./uninstall.sh --keep-backup   # ~/.config/dotfiles/backup 을 남겨둠 (기본은 복원 후 삭제)
 #
 # 복원 기준은 install.sh 가 최초 실행 때 ~/.config/dotfiles/backup/ 에 남긴 기록:
-#   <name>.orig  → 그 내용으로 복원 / <name>.absent → 파일 삭제 / 기록 없음 → .bak 이 있으면 .bak 으로, 없으면 삭제
+#   <name>.orig → 원본 복원 / <name>.absent → 파일 삭제 / 기록 없음 → 파일·.bak·설정 유지
 # 멱등(idempotent): 재실행해도 안전하다. 실제 홈이 아닌 곳에 시험하려면 HOME=<임시 디렉터리> ./uninstall.sh
 
 set -euo pipefail
@@ -40,12 +40,8 @@ restore_file() {        # restore_file <대상 경로> <기록 이름>
   elif [ -f "$BACKUP_DIR/$name.absent" ]; then
     rm -f "$dst"
     info "$dst 삭제 (설치 전에는 없던 파일)"
-  elif [ -f "$dst.bak" ]; then
-    cp "$dst.bak" "$dst"
-    info "$dst ← .bak 복원 (원본 기록 없음 — 구버전 install.sh 로 설치된 경우)"
-  elif [ -f "$dst" ]; then
-    rm -f "$dst"
-    info "$dst 삭제 (원본 기록·.bak 없음)"
+  else
+    return 0           # 설치 기록 없이는 소유권을 판단할 수 없다. .bak도 사용자 파일일 수 있다.
   fi
   rm -f "$dst.bak"
 }
@@ -94,7 +90,9 @@ def load_json(path):
         sys.exit(1)
     return d
 
-if not os.path.exists(p):
+if not os.path.exists(orig) and not os.path.exists(absent):
+    print("[uninstall] settings.json 설치 기록 없음 — 유지")
+elif not os.path.exists(p):
     print("[uninstall] settings.json 없음 — 건너뜀")
 elif os.path.exists(absent):
     d = load_json(p)

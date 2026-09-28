@@ -4,7 +4,7 @@
 사용법 (install.sh / uninstall.sh 가 호출):
   hooks.py check     # 쓰지 않고 apply 가 가능한지만 검사 (깨진 JSON·예상 밖 구조면 exit 1)
   hooks.py apply     # Stop 에 비용 훅 항목이 없으면 추가. 최초 1회 설치 전 파일 유무를 ~/.config/dotfiles/backup 에 기록
-  hooks.py restore   # 비용 훅 항목만 제거. 설치 전에 없던 파일이고 남은 훅이 없으면 파일도 지운다
+  hooks.py restore   # 설치 기록이 있을 때 비용 훅 항목만 제거. 설치 전에 없던 파일이고 남은 훅이 없으면 파일도 지운다
 
 hooks.json 은 다른 도구(터미널 앱 등)도 자기 훅을 넣고 빼는 공유 파일이라, 설치 전 원본으로 통째 되돌리지 않고
 이 스크립트가 넣은 항목(command 가 ~/.codex/cost-hook.py 를 가리키는 것)만 넣고 뺀다. 다른 키·항목은 읽기만 한다.
@@ -110,6 +110,8 @@ def apply():
 
 
 def restore():
+    if not os.path.exists(ABSENT) and not os.path.exists(PRESENT):
+        return                                  # 설치 기록 없는 공유 파일은 그대로 둔다
     if not os.path.exists(HOOKS):
         return
     d, _ = load()
