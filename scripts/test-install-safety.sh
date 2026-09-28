@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 # 설치·제거 안전성 회귀 시험. 임시 HOME과 격리된 PATH만 사용하며 네트워크·실제 패키지 작업은 하지 않는다.
-# 원본 복원 후 반복 제거, 미설치 파일 보존, Claude 설정 사전 거부, apt/dnf 설치 기록·purge를 확인한다.
+# 원본 복원 후 반복 제거, 미설치 파일 보존, Claude 설정 사전 거부, apt/dnf 설치 기록·purge,
+# sudo 불가·패키지 설치 실패 시 플러그인 tarball 폴백을 확인한다.
 set -euo pipefail
 cd "$(dirname "$0")/.."
 python3 - <<'PY'
@@ -27,7 +28,7 @@ def snapshot(home):
 
 
 class Machine:
-    def __init__(self, base, manager='apt-get', installed=(), fail=''):
+    def __init__(self, base, manager='apt-get', installed=(), fail='', sudo=True):
         self.base = base
         self.home = base / 'home'
         self.bin = base / 'bin'
@@ -37,10 +38,13 @@ class Machine:
         self.state.write_text(json.dumps(sorted(installed)))
         self.log = base / 'calls.jsonl'
         write(base / 'fail-package', fail)
+        if not sudo:
+            write(base / 'no-sudo', '')
         write(base / 'proc-version', 'Linux microsoft test\n')
         # PATH를 실제 시스템에 연결하지 않는다. 허용한 파일 작업 도구만 링크한다.
         for name in ('bash', 'dirname', 'grep', 'mkdir', 'cp', 'cmp', 'touch',
-                     'basename', 'chmod', 'rm', 'rmdir', 'tr', 'sed', 'python3'):
+                     'basename', 'chmod', 'rm', 'rmdir', 'tr', 'sed', 'python3',
+                     'mktemp', 'tar', 'gzip', 'find', 'head', 'mv', 'true'):
             path = shutil.which(name)
             assert path, name
             (self.bin / name).symlink_to(path)
@@ -55,6 +59,10 @@ packages = set(json.loads(state.read_text()))
 if name == 'uname':
     print('Linux' if args == ['-s'] else 'x86_64')
 elif name == 'sudo':
+    if args[0] == '-n':
+        if (base / 'no-sudo').exists():
+            sys.exit(1)
+        args = args[1:]
     os.execvp(args[0], args)
 elif name in ('rpm', 'dpkg-query'):
     present = args[-1] in packages
@@ -74,6 +82,17 @@ elif name in ('apt-get', 'dnf'):
     else:
         packages.difference_update(targets)
     state.write_text(json.dumps(sorted(packages)))
+elif name == 'curl' and args[-1].startswith('https://github.com/zsh-users/') and '-o' in args:
+    # 플러그인 태그 tarball: <이름>-<버전>/<이름>.zsh 구조를 흉내 낸다
+    import io, tarfile
+    repo, tag = args[-1].split('/')[4], args[-1].rsplit('/', 1)[1][:-len('.tar.gz')]
+    with (base / 'calls.jsonl').open('a') as f:
+        f.write(json.dumps(['curl', repo, tag]) + '\\n')
+    data = ('# ' + repo + ' ' + tag + '\\n').encode()
+    info = tarfile.TarInfo(repo + '-' + tag.lstrip('v') + '/' + repo + '.zsh')
+    info.size = len(data)
+    with tarfile.open(args[args.index('-o') + 1], 'w:gz') as t:
+        t.addfile(info, io.BytesIO(data))
 elif name in ('curl', 'unzip'):
     raise SystemExit('예상하지 않은 다운로드 또는 압축 해제')
 ''')
@@ -92,6 +111,13 @@ elif name in ('curl', 'unzip'):
 
     def packages(self):
         return set(json.loads(self.state.read_text()))
+
+    def calls(self):
+        return [json.loads(line) for line in self.log.read_text().splitlines()] if self.log.exists() else []
+
+    def plugins(self):
+        manifest = self.home / '.config/dotfiles/backup/plugin-installed.txt'
+        return {Path(p).name for p in manifest.read_text().splitlines()} if manifest.exists() else set()
 
 
 with tempfile.TemporaryDirectory(prefix='dotfiles-safety-') as tmp:
@@ -148,10 +174,11 @@ with tempfile.TemporaryDirectory(prefix='dotfiles-safety-') as tmp:
                 m.run('install.sh')
                 if manifest.exists():
                     assert sorted(manifest.read_text().splitlines()) == sorted(expected)
-                calls = [json.loads(line) for line in m.log.read_text().splitlines()] if m.log.exists() else []
-                assert not any(existing.intersection(call[3:]) for call in calls)
+                assert m.plugins() == {failed} - {''} - existing, (manager, existing, m.plugins())
+                assert not any(existing.intersection(call[3:]) for call in m.calls())
                 m.run('uninstall.sh', '--purge')
                 assert m.packages() == existing
+                assert not (m.home / '.local/share/zsh').exists()
                 assert (m.home / '.zshrc').read_text() == '# 사용자 원본\n'
                 assert json.loads((m.home / '.claude/settings.json').read_text()) == {
                     'statusLine': {'command': 'original'}, 'other': True}
@@ -159,6 +186,27 @@ with tempfile.TemporaryDirectory(prefix='dotfiles-safety-') as tmp:
                 m.run('uninstall.sh', '--purge')
                 assert snapshot(m.home) == before
         print('ok ' + manager + ' 기존 패키지 조합·설치 실패·반복 설치·purge·반복 제거')
+
+    for manager in ('apt-get', 'dnf'):
+        m = Machine(base / ('no-sudo-' + manager), manager, sudo=False)
+        write(m.home / '.zshrc', '# 사용자 원본\n')
+        # 사용자가 직접 둔 플러그인은 기록하지도 지우지도 않는다
+        own = m.home / '.local/share/zsh/plugins/zsh-autosuggestions/zsh-autosuggestions.zsh'
+        write(own, '# 사용자 설치\n')
+        before = snapshot(m.home)
+        m.run('install.sh')
+        assert not any(call[0] in ('apt-get', 'dnf') for call in m.calls()), m.calls()
+        assert m.plugins() == {'zsh-syntax-highlighting'}
+        plugin = m.home / '.local/share/zsh/plugins/zsh-syntax-highlighting/zsh-syntax-highlighting.zsh'
+        assert plugin.read_text() == '# zsh-syntax-highlighting 0.8.0\n'
+        installed = snapshot(m.home)
+        m.run('install.sh')
+        assert snapshot(m.home) == installed and len(m.calls()) == 1
+        m.run('uninstall.sh', '--purge')
+        assert snapshot(m.home) == before and m.packages() == set()
+        m.run('uninstall.sh', '--purge')
+        assert snapshot(m.home) == before
+    print('ok sudo 불가 시 패키지 관리자 없이 tarball 설치·반복 설치·purge·사용자 플러그인 보존')
 
     for manager, query in (('apt-get', 'dpkg-query'), ('dnf', 'rpm')):
         m = Machine(base / ('missing-' + query), manager)

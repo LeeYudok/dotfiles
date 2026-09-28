@@ -58,7 +58,7 @@ cd dotfiles && ./install.sh
 | # | 단계 | 내용 |
 |---|---|---|
 | 0 | 의존성 검사 | Git Bash/MSYS/Cygwin 이면 "WSL2 에서 실행" 안내와 함께 중단. `curl`·`unzip`·`python3`, macOS 는 `brew`, Linux 는 `dnf`+`rpm` 또는 `apt-get`+`dpkg-query` 가 없으면 **홈 파일을 하나도 만들지 않고** 종료. `~/.claude/settings.json`·`~/.gemini/antigravity-cli/settings.json` 이 깨진 JSON 또는 객체가 아닌 JSON이거나 `~/.codex/config.toml` 을 편집할 수 없는 상태(깨진 TOML 등)여도 여기서 중단. |
-| 1 | 패키지 설치 | macOS: brew 로 `starship eza bat zoxide fzf fd jq zsh-autosuggestions zsh-syntax-highlighting` (없을 때만). Linux: `zsh`(dnf/apt), `starship`(공식 스크립트, sudo 없으면 `~/.local/bin`), 자동완성 플러그인 2종(패키지별 설치 여부 확인, dnf 는 필요 시 EPEL 활성화 후), `jq`(sudo 가능할 때만, 아니면 경고), `zoxide`·`fzf`·`eza`(GitHub 최신 릴리스 바이너리 → `~/.local/bin`, sudo 불필요, x86_64/aarch64). |
+| 1 | 패키지 설치 | macOS: brew 로 `starship eza bat zoxide fzf fd jq zsh-autosuggestions zsh-syntax-highlighting` (없을 때만). Linux: `zsh`(dnf/apt), `starship`(공식 스크립트, sudo 없으면 `~/.local/bin`), 자동완성 플러그인 2종(패키지별 설치 여부 확인, dnf 는 필요 시 EPEL 활성화 후. sudo 를 비밀번호 없이 쓸 수 없거나 패키지 설치에 실패하면 GitHub 태그 tarball → `~/.local/share/zsh/plugins`), `jq`(sudo 가능할 때만, 아니면 경고), `zoxide`·`fzf`·`eza`(GitHub 최신 릴리스 바이너리 → `~/.local/bin`, sudo 불필요, x86_64/aarch64). |
 | 2 | starship.toml · eza 테마 | `starship/starship.toml` → `~/.config/starship.toml`, `eza/theme.yml` → `~/.config/eza/theme.yml`(v3 전용 eza 아이콘을 v2·v3 공통 글리프로 덮어씀) |
 | 2.5 | Nerd Fonts | GitHub 최신 릴리스에서 `JetBrainsMono`, `D2Coding` zip 을 받아 `.ttf`/`.otf` 를 폰트 디렉터리(macOS `~/Library/Fonts`, Linux `~/.local/share/fonts` + `fc-cache`)에 설치. 폰트별 `.nerd-font-<name>-installed` 마커 파일로 재설치 방지. **WSL 에서는 건너뛰고 안내만** 한다 — [Windows (WSL2)](#windows-wsl2) 참고. |
 | 3 | zshrc | OS 에 맞는 `zsh/zshrc.*` → `~/.zshrc`. 머신별 alias/함수는 `~/.zshrc.local`(미추적) 에 두며 스크립트가 만들지 않는다 — 없으면 안내만. |
@@ -68,6 +68,8 @@ cd dotfiles && ./install.sh
 | 7 | 기본 셸 | `$SHELL` 이 zsh 가 아니면 `chsh -s <zsh 경로>` 안내만 (자동 변경 안 함). |
 
 런타임 의존성: `curl`, `unzip`, `python3`(0 단계에서 검사). macOS 는 Homebrew, Linux 는 패키지 조회용 `rpm` 또는 `dpkg-query`도 필요하다. Windows 는 WSL2 안에서 실행한다. `jq` 는 statusline 스크립트(Claude·Antigravity) 런타임 전용이라 1 단계에서 자동 설치한다(Linux 는 sudo 가능할 때만).
+
+Linux 에서 sudo 권한이 없으면 **zsh 만 미리 설치돼 있으면 된다.** 나머지는 사용자 영역(`~/.local/bin`, `~/.local/share/zsh/plugins`)에 설치하거나 경고만 하고 넘어간다(jq 가 없으면 statusline 만 동작하지 않는다).
 
 멱등(idempotent): 재실행해도 안전하다. 배치 대상 파일(`starship.toml`·`eza/theme.yml`·`.zshrc`·`statusline-command.sh`(Claude·Antigravity)·`~/.codex/cost-hook.py`)은 기존 파일과 내용이 다를 때만 `.bak` 백업 후 덮어쓴다 — `.bak` 은 1세대만 유지되므로 두 번 연속 다른 내용을 배치하면 첫 백업은 사라진다.
 
@@ -196,7 +198,7 @@ windows\uninstall-git.cmd -KeepBackup
 
 ```bash
 ./uninstall.sh            # 배치 파일 복원/제거 + settings.json statusLine(Claude·Antigravity)·Codex status_line 키 복원·비용 훅 제거 + Nerd Font 제거
-./uninstall.sh --purge    # 위에 더해 install.sh 가 새로 설치한 brew/dnf/apt 패키지·starship 바이너리 제거
+./uninstall.sh --purge    # 위에 더해 install.sh 가 새로 설치한 brew/dnf/apt 패키지·starship 등 바이너리·tarball 플러그인 제거
 ./uninstall.sh --keep-backup   # ~/.config/dotfiles/backup 을 남김 (기본은 복원 후 삭제)
 ```
 
@@ -208,9 +210,9 @@ windows\uninstall-git.cmd -KeepBackup
 - `~/.gemini/antigravity-cli/settings.json` 도 `statusLine` 키만 설치 전 값으로 되돌린다(설치 전에 없던 파일이고 남는 키가 없으면 파일 삭제). 스크립트는 다른 배치 파일과 같은 규칙으로 복원/삭제하고, 비게 된 `~/.gemini/antigravity-cli`·`~/.gemini` 는 지운다. 설치가 agy 단계를 건너뛴 머신에서는 아무것도 하지 않는다.
 - `~/.zshrc.local`, `~/.secrets.zsh`, `~/.claude/CLAUDE.md` 는 사용자 파일이므로 건드리지 않는다.
 - 폰트는 manifest 에 적힌 파일만 지운다. manifest 없이 설치된 옛 머신은 마커만 지우고 경고를 낸다.
-- `--purge` 는 `install.sh` 가 **새로 설치했다고 기록한 것만** 제거한다. 이미 깔려 있던 starship/eza 등은 건드리지 않는다. Linux 플러그인과 EPEL도 새로 설치에 성공한 패키지만 기록한다.
+- `--purge` 는 `install.sh` 가 **새로 설치했다고 기록한 것만** 제거한다. 이미 깔려 있던 starship/eza 등은 건드리지 않는다. Linux 플러그인과 EPEL도 새로 설치에 성공한 패키지만 기록한다. sudo 없이 tarball 로 받은 플러그인은 `~/.local/share/zsh/plugins` 아래 기록된 디렉터리만 지운다.
 - 끝나면 `~/.zshrc` 가 원본(또는 없음)으로 돌아가 zsh 기본 프롬프트로 동작한다. 기본 셸 자체는 `chsh` 로 직접 되돌린다.
-- 설치·제거 안전성 회귀 검사는 `scripts/test-install-safety.sh`로 실행한다. 임시 HOME과 모의 apt/dnf를 사용하므로 실제 패키지 설치나 다운로드가 없다.
+- 설치·제거 안전성 회귀 검사는 `scripts/test-install-safety.sh`로 실행한다. 임시 HOME과 모의 apt/dnf/sudo를 사용하므로 실제 패키지 설치나 다운로드가 없다.
 - 실제 홈에 영향 없이 시험하려면 `HOME=$(mktemp -d) ./install.sh && HOME=<같은 경로> ./uninstall.sh`.
 
 ## 프롬프트 (starship.toml)

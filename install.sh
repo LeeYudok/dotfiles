@@ -8,7 +8,8 @@
 #   0.   의존성·설정 사전 검사 — 누락·잘못된 설정은 홈 변경 전에 종료. Claude JSON은 객체만 허용. Git Bash/MSYS/Cygwin 미지원
 #   1.   zsh / starship / 플러그인 / jq 설치 (없을 때만; macOS 는 eza·bat·zoxide 포함)
 #        Linux 는 zoxide·fzf·eza 를 GitHub 릴리스에서 ~/.local/bin 에 설치 (sudo 불필요)
-#        Linux 플러그인은 패키지별로 설치 여부를 확인해 새로 설치한 것만 기록
+#        Linux 플러그인은 패키지별로 설치 여부를 확인해 새로 설치한 것만 기록.
+#        sudo 를 비밀번호 없이 쓸 수 없거나 패키지 설치에 실패하면 GitHub 태그 tarball 을 ~/.local/share/zsh/plugins 에 설치
 #   2.   starship.toml 배치 (~/.config/starship.toml) + eza 아이콘 테마 배치 (~/.config/eza/theme.yml)
 #   2.5. Nerd Fonts 설치 (JetBrainsMono, D2Coding; 마커 파일로 재설치 방지)
 #        WSL 에서는 건너뛰고 안내만 — 글리프는 Windows 쪽 터미널이 그리므로 폰트도 Windows 에 설치해야 한다
@@ -29,7 +30,7 @@
 # 되돌리기: ./uninstall.sh — 최초 실행 시 ~/.config/dotfiles/backup/ 에 보관한 원본과 manifest 를 기준으로 복원한다.
 #   - <name>.orig     : 덮어쓰기 전 원본 (최초 1회만 기록, 이후 실행은 갱신하지 않음)
 #   - <name>.absent   : 원래 그 파일이 없었다는 표시
-#   - brew-installed.txt / pkg-installed.txt / bin-installed.txt : 이 스크립트가 새로 설치한 것만 기록
+#   - brew-installed.txt / pkg-installed.txt / bin-installed.txt / plugin-installed.txt : 이 스크립트가 새로 설치한 것만 기록
 #   - settings.json.orig : settings.json 설치 전 전체 내용 (없었으면 settings.json.absent)
 #   - codex-config.toml.orig : ~/.codex/config.toml 설치 전 전체 내용 (없었으면 codex-config.toml.absent)
 #   - codex-hooks.json.absent / .present : ~/.codex/hooks.json 설치 전 유무 (다른 도구와 공유하는 파일이라 내용은 기록하지 않음)
@@ -143,19 +144,46 @@ else
       record bin-installed.txt "$HOME/.local/bin/starship"
     fi
   }
+  # sudo 없이 쓸 수 있는 폴백: GitHub 태그 tarball(버전 고정)을 ~/.local/share/zsh/plugins/<name> 에 푼다.
+  # 두 저장소 모두 GitHub Release 가 없어 releases/latest 로 최신 태그를 알 수 없으므로 태그를 고정한다.
+  PLUGIN_DIR="$HOME/.local/share/zsh/plugins"
+  install_plugin_tarball() {   # install_plugin_tarball <이름> <태그>
+    local name="$1" tag="$2" tmp src
+    tmp="$(mktemp -d)"
+    if curl -fsSL -o "$tmp/src.tar.gz" "https://github.com/zsh-users/$name/archive/refs/tags/$tag.tar.gz" \
+       && tar -xzf "$tmp/src.tar.gz" -C "$tmp" \
+       && src="$(find "$tmp" -mindepth 2 -maxdepth 2 -type f -name "$name.zsh" | head -n1)" && [ -n "$src" ]; then
+      mkdir -p "$PLUGIN_DIR"
+      mv "$(dirname "$src")" "$PLUGIN_DIR/$name"
+      record plugin-installed.txt "$PLUGIN_DIR/$name"
+      info "$name $tag 설치 → ~/.local/share/zsh/plugins (sudo 없이)"
+    else
+      info "경고: $name 설치 실패 — 패키지(sudo)·tarball 모두 불가"
+    fi
+    rm -rf "$tmp"
+  }
   # 파일 경로는 배포판마다 다르므로 패키지 DB로 확인한다. 기존 패키지는 manifest에 넣지 않는다.
-  for pkg in zsh-autosuggestions zsh-syntax-highlighting; do
+  # 패키지 설치는 sudo 를 비밀번호 없이 쓸 수 있을 때만 시도한다 (프롬프트로 무인 설치가 멈추지 않게).
+  if sudo -n true 2>/dev/null; then can_sudo=1; else can_sudo=0; fi
+  for spec in zsh-autosuggestions:v0.7.1 zsh-syntax-highlighting:0.8.0; do
+    pkg="${spec%%:*}"
     if command -v dnf >/dev/null; then
       rpm -q "$pkg" >/dev/null 2>&1 && continue
-      rpm -q epel-release >/dev/null 2>&1 \
-        || { sudo dnf install -y epel-release && record pkg-installed.txt epel-release; } || true
-      { sudo dnf install -y "$pkg" && record pkg-installed.txt "$pkg"; } \
-        || info "경고: $pkg 설치 실패 (sudo/repo 확인 필요)"
     elif command -v apt-get >/dev/null; then
       [ "$(dpkg-query -W -f='${db:Status-Status}' "$pkg" 2>/dev/null)" = 'installed' ] && continue
-      { sudo apt-get install -y "$pkg" && record pkg-installed.txt "$pkg"; } \
-        || info "경고: $pkg 설치 실패 (sudo/repo 확인 필요)"
     fi
+    [ -f "$PLUGIN_DIR/$pkg/$pkg.zsh" ] && continue   # 이전 실행에서 tarball 로 설치함
+    if [ "$can_sudo" = 1 ]; then
+      if command -v dnf >/dev/null; then
+        rpm -q epel-release >/dev/null 2>&1 \
+          || { sudo dnf install -y epel-release && record pkg-installed.txt epel-release; } || true
+        sudo dnf install -y "$pkg" && { record pkg-installed.txt "$pkg"; continue; }
+      else
+        sudo apt-get install -y "$pkg" && { record pkg-installed.txt "$pkg"; continue; }
+      fi
+      info "경고: $pkg 패키지 설치 실패 — tarball 로 대신 설치"
+    fi
+    install_plugin_tarball "$pkg" "${spec#*:}"
   done
   # jq — statusline 런타임 전용. sudo 가 없으면 설치를 건너뛰고 경고만 (셸 환경 자체는 jq 없이도 동작)
   command -v jq >/dev/null || {

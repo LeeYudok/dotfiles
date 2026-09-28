@@ -87,5 +87,10 @@ command -v agy >/dev/null && function agy { _yolo_exec agy "$@"; }
 [ -f "$HOME/.zshrc.local" ] && source "$HOME/.zshrc.local"
 
 # ── 플러그인 (syntax-highlighting 은 맨 마지막) ─────────────
-[ -f /usr/share/zsh-autosuggestions/zsh-autosuggestions.zsh ] && source /usr/share/zsh-autosuggestions/zsh-autosuggestions.zsh
-[ -f /usr/share/zsh-syntax-highlighting/zsh-syntax-highlighting.zsh ] && source /usr/share/zsh-syntax-highlighting/zsh-syntax-highlighting.zsh
+# 패키지(/usr/share)가 우선, 없으면 install.sh 가 sudo 없이 받아 둔 ~/.local/share/zsh/plugins
+for _p in zsh-autosuggestions zsh-syntax-highlighting; do
+  for _f in /usr/share/$_p/$_p.zsh "$HOME/.local/share/zsh/plugins/$_p/$_p.zsh"; do
+    [ -f "$_f" ] && { source "$_f"; break; }
+  done
+done
+unset _p _f

@@ -25,12 +25,12 @@
 
 | 경로 | 배치 위치 | 역할 |
 |---|---|---|
-| `install.sh` | — | 부트스트랩. 의존성 검사 → 패키지 → starship.toml → Nerd Fonts → zshrc → statusline + `statusLine` 키 merge → Codex `status_line` 키 merge + 비용 훅 → Antigravity statusline + `statusLine` 키 merge → chsh 안내 |
+| `install.sh` | — | 부트스트랩. 의존성 검사 → 패키지(sudo 불가 시 플러그인은 태그 tarball 폴백) → starship.toml → Nerd Fonts → zshrc → statusline + `statusLine` 키 merge → Codex `status_line` 키 merge + 비용 훅 → Antigravity statusline + `statusLine` 키 merge → chsh 안내 |
 | `uninstall.sh` | — | `install.sh` 의 역연산. `--purge`(새로 설치한 패키지까지), `--keep-backup` |
 | `starship/starship.toml` | `~/.config/starship.toml` | 프롬프트 정의 |
 | `eza/theme.yml` | `~/.config/eza/theme.yml` | eza 아이콘 덮어쓰기. 기본 아이콘 중 Nerd Font v3 전용 코드를 v2·v3 공통 글리프로 바꾼다 |
 | `zsh/zshrc.macos` | `~/.zshrc` (Darwin) | brew 기반. `HOMEBREW_PREFIX` 자동 감지 |
-| `zsh/zshrc.linux` | `~/.zshrc` (그 외) | 미니멀판. 도구가 없으면 기본 프롬프트·`ls --color`·일반 `cd` 로 폴백 |
+| `zsh/zshrc.linux` | `~/.zshrc` (그 외) | 미니멀판. 도구가 없으면 기본 프롬프트·`ls --color`·일반 `cd` 로 폴백. 플러그인은 `/usr/share` 우선, 없으면 `~/.local/share/zsh/plugins` |
 | `zsh/zshrc.local.example` | 배치 안 함 | `~/.zshrc.local` 템플릿. 사용자가 직접 복사한다. **placeholder 만** 담는다 |
 | `claude/statusline-command.sh` | `~/.claude/statusline-command.sh` | statusLine JSON(stdin) → 두 줄 출력. `jq` 필요 |
 | `codex/status-line.py` | 배치 안 함 | `check`/`apply`/`restore`. `~/.codex/config.toml` 의 `[tui]` `status_line` 키만 줄 단위로 편집. `install.sh`·`uninstall.sh` 가 호출 |
@@ -46,7 +46,7 @@
 | `windows/*.cmd` | — | cmd 에서 같은 이름의 `.ps1` 을 `-ExecutionPolicy Bypass` 로 실행하는 래퍼 |
 | `scripts/test-windows-git.sh` | — | `windows/`·`gitbash/` 정적 시험. 인코딩(BOM·ASCII)·줄바꿈·bash 문법·pwsh 구문 분석(있을 때) |
 | `.gitattributes` | — | 기본 LF, `.ps1`/`.cmd` 는 CRLF 그대로(`-text`) |
-| `scripts/test-install-safety.sh` | — | 임시 HOME·모의 apt/dnf로 반복 제거, 미설치 파일 보존, Claude 사전 검사, 패키지별 기록·purge 검증 |
+| `scripts/test-install-safety.sh` | — | 임시 HOME·모의 apt/dnf/sudo로 반복 제거, 미설치 파일 보존, Claude 사전 검사, 패키지별 기록·purge, sudo 불가·패키지 실패 시 플러그인 tarball 폴백 검증 |
 | `scripts/test-codex-status-line.sh` | — | `status-line.py` 의 임시 `HOME` 왕복 시험. `status_line` 순서까지 검증 |
 | `scripts/test-codex-cost-hook.sh` | — | `cost-hook.py` 금액 계산(고정 rollout)과 `hooks.py` 임시 `HOME` 왕복 시험 |
 | `scripts/test-windows-paths.sh` | — | Git Bash 거부(어느 OS 에서나)와 WSL 폰트 건너뛰기(Linux 에서만) 시험 |
@@ -57,7 +57,7 @@
 | `.github/workflows/check.yml` | — | PR·main push에서 식별자·문법 검사 실행 |
 | `scripts/check-agents-yaml.sh` | — | `AGENTS.yaml` 검증기(구조·따옴표 없는 날짜·그래프·경로). agents-yaml 스킬 원본을 수정 없이 복사. python3 + PyYAML 필요 |
 
-홈에 생기는 부산물: `~/.config/dotfiles/backup/`(원본 기록과 설치 manifest), 배치 대상 옆의 `*.bak`(1세대), 폰트 디렉터리의 `.nerd-font-<name>-installed` 마커와 `.nerd-font-<name>-files.txt` manifest.
+홈에 생기는 부산물: `~/.config/dotfiles/backup/`(원본 기록과 설치 manifest), 배치 대상 옆의 `*.bak`(1세대), Linux 에서 sudo 없이 받은 `~/.local/share/zsh/plugins/<name>`, 폰트 디렉터리의 `.nerd-font-<name>-installed` 마커와 `.nerd-font-<name>-files.txt` manifest.
 
 ## 추적 범위 — 가장 중요한 규칙
 
@@ -89,7 +89,7 @@
 - **`hooks.json` 은 공유 파일**: 다른 도구(터미널 앱 등)가 수시로 자기 훅을 넣고 빼므로 설치 전 원본으로 통째 되돌리지 않는다. `codex/hooks.py` 는 command 가 `~/.codex/cost-hook.py` 를 가리키는 항목만 넣고 빼며, 설치 전 기록은 파일 유무(`codex-hooks.json.absent`/`.present`)만 남긴다. 깨진 JSON·예상 밖 구조면 손대지 않고 중단한다.
 - **비용 훅은 Codex 를 막지 않는다**: `cost-hook.py` 는 어떤 오류든 조용히 exit 0 하고, 단가를 모르면 출력하지 않는다. 단가표를 고칠 때는 출처 URL 과 확인 날짜 주석도 같이 갱신한다.
 - **WSL 에서는 `$HOME` 밖을 건드리지 않는다**: WSL 은 `/proc/version` 의 `microsoft` 로 감지하고(`is_wsl`), Nerd Font 단계를 건너뛰고 안내만 한다. Windows 사용자 프로필에 폰트를 설치하는 식의 자동화는 넣지 않는다 — 역연산과 임시 `HOME` 왕복 시험이 성립하지 않는다. `DOTFILES_PROC_VERSION` 은 감지에 쓸 파일을 바꾸는 시험용 변수다.
-- **설치한 것만 지운다**: `--purge` 는 manifest(`brew-installed.txt`·`pkg-installed.txt`·`bin-installed.txt`)에 기록된 것만, 폰트는 파일 manifest 에 적힌 것만 제거한다. 원래 있던 것을 지우지 않는다. Linux 플러그인은 패키지 DB로 각각 조회해 새로 설치에 성공한 것만 기록한다(EPEL 포함). `.orig`/`.absent` 없는 파일·`.bak`과 설치 기록 없는 Claude 설정·Codex 훅은 보존한다.
+- **설치한 것만 지운다**: `--purge` 는 manifest(`brew-installed.txt`·`pkg-installed.txt`·`bin-installed.txt`·`plugin-installed.txt`)에 기록된 것만, 폰트는 파일 manifest 에 적힌 것만 제거한다. 원래 있던 것을 지우지 않는다. Linux 플러그인은 패키지 DB로 각각 조회해 새로 설치에 성공한 것만 기록한다(EPEL 포함). 패키지 설치는 `sudo -n` 이 될 때만 시도하고(비밀번호 프롬프트로 무인 설치가 멈추지 않게), 안 되면 버전 고정 태그 tarball 을 `~/.local/share/zsh/plugins` 에 풀어 `plugin-installed.txt` 에 기록한다. purge 는 그 디렉터리 아래 기록된 경로만 지운다. `.orig`/`.absent` 없는 파일·`.bak`과 설치 기록 없는 Claude 설정·Codex 훅은 보존한다.
 - **사용자 파일은 건드리지 않는다**: `~/.zshrc.local`, `~/.secrets.zsh`, `~/.claude/CLAUDE.md` 는 만들지도 지우지도 않는다.
 - **install 과 uninstall 은 한 쌍**: `install.sh` 가 홈에 뭔가를 새로 만들면 같은 변경에서 `uninstall.sh` 에 역연산을 넣는다.
 - **번호 동기화**: `install.sh` 의 섹션 번호, 헤더 주석의 동작 목록, README 의 단계 표는 항상 같은 번호를 쓴다. 단계를 바꾸면 세 곳을 같이 고친다.

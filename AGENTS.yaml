@@ -136,7 +136,7 @@ nodes:
 # 시험
 - id: test-install-safety
   type: test
-  label: '임시 HOME·모의 apt/dnf로 반복 제거·파일 보존·Claude 사전 검사·설치 기록·purge 검증'
+  label: '임시 HOME·모의 apt/dnf/sudo로 반복 제거·파일 보존·Claude 사전 검사·설치 기록·플러그인 tarball 폴백·purge 검증'
   path: scripts/test-install-safety.sh
 - id: test-codex-status-line
   type: test
@@ -195,6 +195,9 @@ nodes:
 - id: cli-tool-releases
   type: external-url
   label: 'GitHub 릴리스 바이너리 (zoxide, fzf, eza) — Linux 에서 ~/.local/bin 에 설치'
+- id: zsh-plugin-tarballs
+  type: external-url
+  label: 'GitHub zsh-users 태그 tarball (zsh-autosuggestions v0.7.1, zsh-syntax-highlighting 0.8.0) — Linux 에서 sudo 불가·패키지 설치 실패 시 ~/.local/share/zsh/plugins 에 설치'
 - id: jq
   type: cli
   label: 'statusline 스크립트가 JSON 파싱에 사용'
@@ -228,6 +231,7 @@ edges:
 - {from: install, to: starship-installer, rel: downloads}
 - {from: install, to: nerd-fonts, rel: downloads, env: [DOTFILES_PROC_VERSION]}
 - {from: install, to: cli-tool-releases, rel: downloads}
+- {from: install, to: zsh-plugin-tarballs, rel: downloads}
 - {from: install, to: python3, rel: requires}
 - {from: uninstall, to: home-backup, rel: reads}
 - {from: uninstall, to: codex-status-line, rel: invokes}
@@ -292,7 +296,7 @@ policies:
 - {id: cost-hook-never-blocks, rule: 'cost-hook.py 는 어떤 오류든 exit 0. 단가표를 고치면 출처 URL·확인 날짜 주석도 갱신', source: AGENTS.md, files: [codex/cost-hook.py]}
 - {id: no-dir-for-absent-tool, rule: 'Codex·Antigravity 를 쓰지 않는 머신에서는 ~/.codex, ~/.gemini 를 만들지 않는다', source: AGENTS.md, files: [install.sh]}
 - {id: wsl-home-only, rule: 'WSL 에서는 $HOME 밖을 건드리지 않는다. 폰트는 안내만', source: AGENTS.md, files: [install.sh]}
-- {id: remove-only-installed, rule: '--purge 는 manifest 에 기록된 패키지·폰트 파일만 제거. 플러그인·EPEL은 새로 설치한 것만 기록. 기록 없는 파일·백업·Claude 설정·Codex 훅은 보존', source: AGENTS.md, files: [uninstall.sh]}
+- {id: remove-only-installed, rule: '--purge 는 manifest 에 기록된 패키지·폰트 파일·플러그인 디렉터리만 제거. 플러그인·EPEL은 새로 설치한 것만 기록. tarball 플러그인은 plugin-installed.txt 에 기록된 ~/.local/share/zsh/plugins 아래 경로만 지운다. 기록 없는 파일·백업·Claude 설정·Codex 훅은 보존', source: AGENTS.md, files: [uninstall.sh]}
 - {id: user-files-untouched, rule: '~/.zshrc.local, ~/.secrets.zsh, ~/.claude/CLAUDE.md 는 만들지도 지우지도 않는다', source: AGENTS.md}
 - {id: install-uninstall-pair, rule: 'install.sh 가 새로 만드는 것은 같은 변경에서 uninstall.sh 에 역연산', source: AGENTS.md, files: [install.sh, uninstall.sh]}
 - {id: step-numbering-sync, rule: 'install.sh 섹션 번호·헤더 주석·README 단계 표는 같은 번호', source: AGENTS.md, files: [install.sh, README.md]}
