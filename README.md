@@ -325,6 +325,8 @@ API 환산 $1.23 · 이번 턴 +$0.04 · 입력 1.4M(캐시 90%) · 출력 11.3k
 
 ## 갱신 규칙
 
+PR·`main` push에서 식별자·문법 검사를 자동 실행한다. push 전에는 `git add` 후 `git diff --cached`를 검토하고 `scripts/check-identifiers.sh`와 `scripts/check-syntax.sh`를 실행한다(Git·bash·zsh·python3 필요). 식별자 검사는 스테이징된 파일의 정해진 패턴만 확인하므로 직접 검토도 필요하다.
+
 - 로컬에서 `~/.zshrc` / `~/.config/starship.toml` / `~/.claude/statusline-command.sh` / `~/.gemini/antigravity-cli/statusline-command.sh` / `~/.codex/cost-hook.py` / (Git Bash) `~/.bashrc` 를 바꾸면 이 저장소에도 반영해 커밋한다.
 - 머신별 일회성 설정(특정 호스트 alias 등)은 `~/.zshrc.local` 에 두고 저장소 zshrc 에는 넣지 않는다. 공통화 가능한 것만 양쪽 zshrc 에 반영.
 - `install.sh` 에 단계를 추가하면 헤더 주석과 이 README 의 단계 표를 같이 고친다. 홈에 뭔가를 새로 만들면 `uninstall.sh` 에 그 역연산도 같이 넣는다. `windows/install-git.ps1` 과 `uninstall-git.ps1` 도 같은 관계다.

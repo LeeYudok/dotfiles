@@ -8,7 +8,7 @@ schema_version: '1.0'
 meta:
   name: dotfiles
   description: '새 머신에 zsh·starship·Claude/Codex/Antigravity statusline 을 한 번에 맞추는 개인 dotfiles 부트스트랩'
-  updated: '2026-09-25'
+  updated: '2026-09-28'
   repo_url: 'https://github.com/LeeYudok/dotfiles'
   tracker: github
   issue_tracker_url: 'https://github.com/LeeYudok/dotfiles/issues'
@@ -33,7 +33,7 @@ environments:
     notes: '인터넷·WSL2 불가. Git 오프라인 설치 + Git Bash 설정만. zsh·starship·statusline 없음'
   unsupported:
     - 'Git Bash/MSYS/Cygwin 에서 install.sh (0 단계에서 중단)'
-  ci: none
+  ci: 'GitHub Actions: PR·main push에서 식별자·문법 검사'
 
 nodes:
 # 진입점
@@ -119,6 +119,20 @@ nodes:
   path: gitbash/bash_profile
   deploy_to: '~/.bash_profile'
 
+# 검사 자동화
+- id: check-identifiers
+  type: bash-script
+  label: 'Git 인덱스의 식별자 패턴 검사. 검출 시 파일명만 출력'
+  path: scripts/check-identifiers.sh
+- id: check-syntax
+  type: bash-script
+  label: 'bash·zsh 파일별 문법 검사와 Python 컴파일 검사'
+  path: scripts/check-syntax.sh
+- id: ci-check
+  type: workflow
+  label: 'PR·main push에서 식별자·문법 검사'
+  path: .github/workflows/check.yml
+
 # 시험
 - id: test-codex-status-line
   type: test
@@ -185,6 +199,8 @@ nodes:
   label: '반입한 Git for Windows 설치 파일 (windows/offline/, 미추적)'
 
 edges:
+- {from: ci-check, to: check-identifiers, rel: invokes}
+- {from: ci-check, to: check-syntax, rel: invokes}
 - {from: install, to: starship-toml, rel: deploys}
 - {from: install, to: eza-theme, rel: deploys}
 - {from: install, to: zshrc-macos, rel: deploys, env: [HOME]}
@@ -228,9 +244,7 @@ edges:
 
 commands:
   syntax:
-    bash: 'bash -n install.sh uninstall.sh scripts/check-agents-yaml.sh claude/statusline-command.sh agy/statusline-command.sh scripts/test-agy-statusline.sh scripts/test-codex-status-line.sh scripts/test-codex-cost-hook.sh scripts/test-windows-paths.sh scripts/test-windows-git.sh gitbash/bashrc gitbash/bash_profile'
-    python: 'python3 -m py_compile codex/status-line.py codex/cost-hook.py codex/hooks.py agy/settings.py'
-    zsh: 'zsh -n zsh/zshrc.macos zsh/zshrc.linux zsh/zshrc.local.example'
+    all: scripts/check-syntax.sh
   roundtrip:
     install_twice: 'T="$(mktemp -d)"; HOME="$T" ./install.sh && HOME="$T" ./install.sh'
     uninstall_clean: 'HOME="$T" ./uninstall.sh && find "$T" -type f -not -path "*/Library/Caches/*"'
@@ -243,7 +257,7 @@ commands:
     windows_paths: scripts/test-windows-paths.sh
   checks:
     agents_yaml: scripts/check-agents-yaml.sh
-    identifier_scan: "git grep -nIE '([0-9]{1,3}\\.){3}[0-9]{1,3}|/Users/[a-z0-9]+|/home/[a-z0-9]+|glpat-|ghp_|BEGIN [A-Z ]*PRIVATE KEY' -- ':!AGENTS.md' ':!AGENTS.yaml'"
+    identifier_scan: scripts/check-identifiers.sh
 
 secret_files: []
 
@@ -285,7 +299,7 @@ known_issues:
 - {id: nerd-font-v2-terminals, summary: 'Termius 등 일부 터미널은 Nerd Font v2 계열 폰트를 내장해 v3 전용 5자리 글리프(U+F0000~)가 깨진다. starship·eza 글리프는 BMP 영역만 쓴다', source: AGENTS.md, files: [starship/starship.toml, eza/theme.yml]}
 - {id: roundtrip-downloads-fonts, summary: '임시 HOME 왕복은 Nerd Font 를 실제로 받는다(수십 MB). 폰트 무관 변경이면 .nerd-font-<name>-installed 마커로 건너뛴다', source: AGENTS.md}
 - {id: macos-brew-cache, summary: 'macOS 임시 HOME 왕복 뒤 Library/Caches 에 brew 캐시가 남는다. 잔여 파일 검사에서 제외', source: AGENTS.md}
-- {id: identifier-scan-self-match, summary: '식별자 검사 패턴(glpat-, ghp_)이 명령을 담은 AGENTS.md·AGENTS.yaml 자신에 걸린다. 두 파일은 검사에서 제외', source: AGENTS.md}
+- {id: identifier-scan-self-match, summary: '패턴을 정의하는 검사 스크립트만 제외한다. git add 후 실행하며 검출·Git 오류는 실패한다', source: AGENTS.md}
 
 docs:
 - {path: AGENTS.md, what: '에이전트 지침 (사람용 SoT)'}
