@@ -169,6 +169,7 @@ else
   }
   # 파일 경로는 배포판마다 다르므로 패키지 DB로 확인한다. 기존 패키지는 manifest에 넣지 않는다.
   # 패키지 설치는 sudo 를 비밀번호 없이 쓸 수 있을 때만 시도한다 (프롬프트로 무인 설치가 멈추지 않게).
+  # 도중에 sudo 자격 캐시가 만료돼도 프롬프트가 뜨지 않도록 각 호출에도 -n 을 붙인다.
   if sudo -n true 2>/dev/null; then can_sudo=1; else can_sudo=0; fi
   for spec in zsh-autosuggestions:v0.7.1 zsh-syntax-highlighting:0.8.0; do
     pkg="${spec%%:*}"
@@ -181,10 +182,10 @@ else
     if [ "$can_sudo" = 1 ]; then
       if command -v dnf >/dev/null; then
         rpm -q epel-release >/dev/null 2>&1 \
-          || { sudo dnf install -y epel-release && record pkg-installed.txt epel-release; } || true
-        sudo dnf install -y "$pkg" && { record pkg-installed.txt "$pkg"; continue; }
+          || { sudo -n dnf install -y epel-release && record pkg-installed.txt epel-release; } || true
+        sudo -n dnf install -y "$pkg" && { record pkg-installed.txt "$pkg"; continue; }
       else
-        sudo apt-get install -y "$pkg" && { record pkg-installed.txt "$pkg"; continue; }
+        sudo -n apt-get install -y "$pkg" && { record pkg-installed.txt "$pkg"; continue; }
       fi
       info "경고: $pkg 패키지 설치 실패 — tarball 로 대신 설치"
     fi
@@ -194,8 +195,8 @@ else
   command -v jq >/dev/null || {
     if sudo -n true 2>/dev/null; then
       info "jq 설치"
-      if command -v dnf >/dev/null; then sudo dnf install -y jq && record pkg-installed.txt jq
-      else sudo apt-get install -y jq && record pkg-installed.txt jq; fi
+      if command -v dnf >/dev/null; then sudo -n dnf install -y jq && record pkg-installed.txt jq
+      else sudo -n apt-get install -y jq && record pkg-installed.txt jq; fi
     else
       info "경고: jq 없음 + sudo 불가 — Claude statusline 은 jq 설치 전까지 동작하지 않음 (dnf/apt install jq)"
     fi

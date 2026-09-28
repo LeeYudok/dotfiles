@@ -63,6 +63,9 @@ elif name == 'sudo':
         if (base / 'no-sudo').exists():
             sys.exit(1)
         args = args[1:]
+    elif args[:2] in (['apt-get', 'install'], ['dnf', 'install']):
+        # 설치 중 비밀번호 프롬프트가 뜰 수 있는 호출을 기록한다
+        (base / 'sudo-without-n').touch()
     os.execvp(args[0], args)
 elif name in ('rpm', 'dpkg-query'):
     present = args[-1] in packages
@@ -165,6 +168,7 @@ with tempfile.TemporaryDirectory(prefix='dotfiles-safety-') as tmp:
                 write(m.home / '.zshrc', '# 사용자 원본\n')
                 write(m.home / '.claude/settings.json', '{"statusLine":{"command":"original"},"other":true}')
                 m.run('install.sh')
+                assert not (m.base / 'sudo-without-n').exists()
                 expected = PLUGINS - existing - {failed}
                 if manager == 'dnf' and not PLUGINS <= existing and 'epel-release' not in existing:
                     expected |= {'epel-release'}
