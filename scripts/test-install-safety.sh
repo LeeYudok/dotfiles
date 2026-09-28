@@ -193,6 +193,18 @@ with tempfile.TemporaryDirectory(prefix='dotfiles-safety-') as tmp:
         # 사용자가 직접 둔 플러그인은 기록하지도 지우지도 않는다
         own = m.home / '.local/share/zsh/plugins/zsh-autosuggestions/zsh-autosuggestions.zsh'
         write(own, '# 사용자 설치\n')
+        # 구조가 다른 같은 이름 디렉터리도 설치 대상으로 삼거나 기록하지 않는다
+        other = m.home / '.local/share/zsh/plugins/zsh-syntax-highlighting/src/other.zsh'
+        write(other, '# 다른 구조\n')
+        before = snapshot(m.home)
+        m.run('install.sh')
+        assert m.plugins() == set()
+        assert list(other.parent.parent.rglob('*.zsh')) == [other]
+        m.run('uninstall.sh', '--purge')
+        assert snapshot(m.home) == before
+        other.unlink()
+        other.parent.rmdir()
+        other.parent.parent.rmdir()
         before = snapshot(m.home)
         m.run('install.sh')
         assert not any(call[0] in ('apt-get', 'dnf') for call in m.calls()), m.calls()
@@ -206,7 +218,7 @@ with tempfile.TemporaryDirectory(prefix='dotfiles-safety-') as tmp:
         assert snapshot(m.home) == before and m.packages() == set()
         m.run('uninstall.sh', '--purge')
         assert snapshot(m.home) == before
-    print('ok sudo 불가 시 패키지 관리자 없이 tarball 설치·반복 설치·purge·사용자 플러그인 보존')
+    print('ok sudo 불가 시 패키지 관리자 없이 tarball 설치·반복 설치·purge·사용자 플러그인·같은 이름 경로 보존')
 
     for manager, query in (('apt-get', 'dpkg-query'), ('dnf', 'rpm')):
         m = Machine(base / ('missing-' + query), manager)

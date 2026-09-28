@@ -149,6 +149,11 @@ else
   PLUGIN_DIR="$HOME/.local/share/zsh/plugins"
   install_plugin_tarball() {   # install_plugin_tarball <이름> <태그>
     local name="$1" tag="$2" tmp src
+    # 설치 스크립트가 만들지 않은 같은 이름의 경로가 있으면 그 안에 풀거나 기록하지 않는다 (purge 가 지우게 되므로)
+    if [ -e "$PLUGIN_DIR/$name" ] || [ -L "$PLUGIN_DIR/$name" ]; then
+      info "경고: $PLUGIN_DIR/$name 이 이미 있음 (구조가 다름) — $name 설치 건너뜀"
+      return 0
+    fi
     tmp="$(mktemp -d)"
     if curl -fsSL -o "$tmp/src.tar.gz" "https://github.com/zsh-users/$name/archive/refs/tags/$tag.tar.gz" \
        && tar -xzf "$tmp/src.tar.gz" -C "$tmp" \
