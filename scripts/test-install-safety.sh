@@ -28,7 +28,7 @@ def snapshot(home):
 
 
 class Machine:
-    def __init__(self, base, manager='apt-get', installed=(), fail='', sudo=True):
+    def __init__(self, base, manager='apt-get', installed=(), fail='', sudo=True, jq=True):
         self.base = base
         self.home = base / 'home'
         self.bin = base / 'bin'
@@ -102,6 +102,8 @@ elif name in ('curl', 'unzip'):
         dispatcher.chmod(0o755)
         for name in ('uname', 'sudo', manager, 'rpm' if manager == 'dnf' else 'dpkg-query',
                      'curl', 'unzip', 'zsh', 'starship', 'jq', 'zoxide', 'fzf', 'eza', 'fc-cache'):
+            if name == 'jq' and not jq:
+                continue
             (self.bin / name).symlink_to(dispatcher)
         self.env = dict(os.environ, HOME=str(self.home), PATH=str(self.bin),
                         DOTFILES_PROC_VERSION=str(base / 'proc-version'))
@@ -223,6 +225,13 @@ with tempfile.TemporaryDirectory(prefix='dotfiles-safety-') as tmp:
         m.run('uninstall.sh', '--purge')
         assert snapshot(m.home) == before
     print('ok sudo 불가 시 패키지 관리자 없이 tarball 설치·반복 설치·purge·사용자 플러그인·같은 이름 경로 보존')
+
+    for manager in ('apt-get', 'dnf'):
+        m = Machine(base / ('jq-fail-' + manager), manager, PLUGINS, fail='jq', jq=False)
+        p = m.run('install.sh')
+        assert 'jq 설치 실패' in p.stdout, p.stdout
+        assert not (m.home / '.config/dotfiles/backup/pkg-installed.txt').exists()
+    print('ok jq 패키지 설치 실패 시 경고하고 기록하지 않음')
 
     for manager, query in (('apt-get', 'dpkg-query'), ('dnf', 'rpm')):
         m = Machine(base / ('missing-' + query), manager)

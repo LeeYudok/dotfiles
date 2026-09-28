@@ -193,12 +193,13 @@ else
   done
   # jq — statusline 런타임 전용. sudo 가 없으면 설치를 건너뛰고 경고만 (셸 환경 자체는 jq 없이도 동작)
   command -v jq >/dev/null || {
-    if sudo -n true 2>/dev/null; then
-      info "jq 설치"
-      if command -v dnf >/dev/null; then sudo -n dnf install -y jq && record pkg-installed.txt jq
-      else sudo -n apt-get install -y jq && record pkg-installed.txt jq; fi
-    else
+    if command -v dnf >/dev/null; then pm=dnf; else pm=apt-get; fi
+    if ! sudo -n true 2>/dev/null; then
       info "경고: jq 없음 + sudo 불가 — Claude statusline 은 jq 설치 전까지 동작하지 않음 (dnf/apt install jq)"
+    elif info "jq 설치" && sudo -n "$pm" install -y jq; then
+      record pkg-installed.txt jq
+    else
+      info "경고: jq 설치 실패 — Claude statusline 은 jq 설치 전까지 동작하지 않음 ($pm install jq)"
     fi
   }
   # zoxide / fzf / eza — 배포판 저장소에 없거나 낡은 경우가 많아 GitHub 릴리스 바이너리를 ~/.local/bin 에 둔다 (sudo 불필요)
