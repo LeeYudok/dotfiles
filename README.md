@@ -11,8 +11,11 @@ dotfiles/
 ├── install.sh                 # 부트스트랩 스크립트 (멱등)
 ├── uninstall.sh               # install.sh 적용 전 상태로 복원 (--purge 로 패키지까지)
 ├── AGENTS.md                  # 프로젝트 개요·불변 규칙·검증 방법 (AI 에이전트/기여자용)
+├── AGENTS.yaml                # AGENTS.md 의 기계 판독용 짝 — 구성요소 그래프·명령·정책·함정
 ├── .gitignore                 # 머신별·시크릿 파일명, 반입용 설치 파일(windows/offline/) 차단
 ├── .gitattributes             # 줄바꿈 고정 — 기본 LF, .ps1/.cmd 는 CRLF 그대로
+├── .github/
+│   └── workflows/check.yml    # PR·main push 에서 식별자·문법 검사 (CI)
 ├── starship/
 │   └── starship.toml          # Catppuccin Mocha 팔레트 2줄 프롬프트, Nerd Font 글리프 (OS 공통)
 ├── eza/
@@ -39,6 +42,10 @@ dotfiles/
 │   ├── cost-hook.py           # Codex Stop 훅 — 턴마다 API 환산 비용 한 줄 표시 → ~/.codex/cost-hook.py
 │   └── hooks.py               # hooks.json 의 Stop 에 위 훅 항목 하나만 merge/제거
 └── scripts/
+    ├── check-identifiers.sh       # 공개 전 식별자 검사 — Git 인덱스 대상, 검출 시 파일명만 출력하고 실패
+    ├── check-syntax.sh            # bash·zsh 파일별 문법 검사 + Python 컴파일 검사
+    ├── check-agents-yaml.sh       # AGENTS.yaml 검증 — 구조·따옴표 없는 날짜·그래프·경로 (PyYAML 필요)
+    ├── test-install-safety.sh     # 설치·제거 안전성 — 모의 apt/dnf/sudo 로 반복 제거·기록·purge·플러그인 폴백 (임시 HOME)
     ├── test-codex-status-line.sh  # codex/status-line.py 왕복 시험 (임시 HOME)
     ├── test-codex-cost-hook.sh    # cost-hook.py 금액 계산 + hooks.py 왕복 시험 (임시 HOME)
     ├── test-agy-statusline.sh     # agy/settings.py 왕복 + statusline 렌더 시험 (임시 HOME)
@@ -57,7 +64,7 @@ cd dotfiles && ./install.sh
 
 | # | 단계 | 내용 |
 |---|---|---|
-| 0 | 의존성 검사 | Git Bash/MSYS/Cygwin 이면 "WSL2 에서 실행" 안내와 함께 중단. `curl`·`unzip`·`python3`, macOS 는 `brew`, Linux 는 `dnf`+`rpm` 또는 `apt-get`+`dpkg-query` 가 없으면 **홈 파일을 하나도 만들지 않고** 종료. `~/.claude/settings.json`·`~/.gemini/antigravity-cli/settings.json` 이 깨진 JSON 또는 객체가 아닌 JSON이거나 `~/.codex/config.toml` 을 편집할 수 없는 상태(깨진 TOML 등)여도 여기서 중단. |
+| 0 | 의존성 검사 | Git Bash/MSYS/Cygwin 이면 "WSL2 에서 실행" 안내와 함께 중단. `curl`·`unzip`·`python3`, macOS 는 `brew`, Linux 는 `dnf`+`rpm` 또는 `apt-get`+`dpkg-query` 가 없으면 **홈 파일을 하나도 만들지 않고** 종료. `~/.claude/settings.json`·`~/.gemini/antigravity-cli/settings.json` 이 깨진 JSON 또는 객체가 아닌 JSON이거나 `~/.codex/config.toml`·`~/.codex/hooks.json` 을 편집할 수 없는 상태(깨진 TOML·JSON, 예상 밖 구조 등)여도 여기서 중단. |
 | 1 | 패키지 설치 | macOS: brew 로 `starship eza bat zoxide fzf fd jq zsh-autosuggestions zsh-syntax-highlighting` (없을 때만). Linux: `zsh`(dnf/apt), `starship`(공식 스크립트, sudo 없으면 `~/.local/bin`), 자동완성 플러그인 2종(패키지별 설치 여부 확인, dnf 는 필요 시 EPEL 활성화 후. sudo 를 비밀번호 없이 쓸 수 없거나 패키지 설치에 실패하면 GitHub 태그 tarball → `~/.local/share/zsh/plugins`), `jq`(sudo 가능할 때만, 아니면 경고), `zoxide`·`fzf`·`eza`(GitHub 최신 릴리스 바이너리 → `~/.local/bin`, sudo 불필요, x86_64/aarch64). |
 | 2 | starship.toml · eza 테마 | `starship/starship.toml` → `~/.config/starship.toml`, `eza/theme.yml` → `~/.config/eza/theme.yml`(v3 전용 eza 아이콘을 v2·v3 공통 글리프로 덮어씀) |
 | 2.5 | Nerd Fonts | GitHub 최신 릴리스에서 `JetBrainsMono`, `D2Coding` zip 을 받아 `.ttf`/`.otf` 를 폰트 디렉터리(macOS `~/Library/Fonts`, Linux `~/.local/share/fonts` + `fc-cache`)에 설치. 폰트별 `.nerd-font-<name>-installed` 마커 파일로 재설치 방지. **WSL 에서는 건너뛰고 안내만** 한다 — [Windows (WSL2)](#windows-wsl2) 참고. |
@@ -329,7 +336,7 @@ API 환산 $1.23 · 이번 턴 +$0.04 · 입력 1.4M(캐시 90%) · 출력 11.3k
 
 ## 갱신 규칙
 
-PR·`main` push에서 식별자·문법 검사를 자동 실행한다. push 전에는 `git add` 후 `git diff --cached`를 검토하고 `scripts/check-identifiers.sh`와 `scripts/check-syntax.sh`를 실행한다(Git·bash·zsh·python3 필요). 식별자 검사는 스테이징된 파일의 정해진 패턴만 확인하므로 직접 검토도 필요하다.
+PR·`main` push에서 식별자·문법 검사를 자동 실행한다. push 전에는 `git add` 후 `git diff --cached`를 검토하고 `scripts/check-identifiers.sh`와 `scripts/check-syntax.sh`를 실행한다(Git·bash·zsh·python3 필요). CI 는 `.github/workflows/check.yml` 이 같은 두 검사를 돌린다. `AGENTS.yaml` 을 고쳤으면 `scripts/check-agents-yaml.sh`(PyYAML 필요)로 검증한다. 식별자 검사는 스테이징된 파일의 정해진 패턴만 확인하므로 직접 검토도 필요하다.
 
 - 로컬에서 `~/.zshrc` / `~/.config/starship.toml` / `~/.claude/statusline-command.sh` / `~/.gemini/antigravity-cli/statusline-command.sh` / `~/.codex/cost-hook.py` / (Git Bash) `~/.bashrc` 를 바꾸면 이 저장소에도 반영해 커밋한다.
 - 머신별 일회성 설정(특정 호스트 alias 등)은 `~/.zshrc.local` 에 두고 저장소 zshrc 에는 넣지 않는다. 공통화 가능한 것만 양쪽 zshrc 에 반영.
