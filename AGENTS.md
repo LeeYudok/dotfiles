@@ -15,7 +15,7 @@
 
 5. **Antigravity CLI statusline** — `agy/statusline-command.sh`(→ `~/.gemini/antigravity-cli/statusline-command.sh`)와, `~/.gemini/antigravity-cli/settings.json` 의 `statusLine` 키 하나. Claude 와 같은 외부 명령 방식이며 `agy/settings.py` 가 그 키만 merge/복원한다.
 
-이 다섯을 `install.sh` 가 홈 디렉터리에 배치하고 `uninstall.sh` 가 설치 전 상태로 되돌린다. 프레임워크(oh-my-zsh 등)나 dotfile 매니저(stow, chezmoi)는 쓰지 않는다 — 셸 스크립트 두 개와 복사할 파일들이 전부다. 빌드·패키지·테스트 러너도 없다.
+이 다섯을 `install.sh` 가 홈 디렉터리에 배치하고 `uninstall.sh` 가 설치 전 상태로 되돌린다. 프레임워크(oh-my-zsh 등)나 dotfile 매니저(stow, chezmoi)는 쓰지 않는다 — 셸 스크립트 두 개와 복사할 파일들이 전부다. 빌드·패키지·테스트 러너는 없다. GitHub Actions는 식별자·문법 검사만 실행한다.
 
 대상 환경: macOS(Apple Silicon/Intel, Homebrew 필수), Linux(RHEL/Rocky 계열 `dnf`, Debian 계열 `apt-get`), Windows 는 WSL2 안에서만(Linux 경로를 그대로 쓴다). Git Bash/MSYS/Cygwin 에서 `install.sh` 는 지원하지 않고 0 단계에서 중단한다. 셸 스크립트는 bash, 배치되는 설정은 zsh.
 
@@ -51,6 +51,9 @@
 | `scripts/test-windows-paths.sh` | — | Git Bash 거부(어느 OS 에서나)와 WSL 폰트 건너뛰기(Linux 에서만) 시험 |
 | `.gitignore` | — | 머신별·시크릿 파일명 차단 |
 | `AGENTS.yaml` | — | 기계 판독용 사실(구성요소 그래프·명령·정책 요약·함정). 이 문서와 함께 갱신한다 |
+| `scripts/check-identifiers.sh` | — | Git 인덱스의 식별자 패턴 검사. 검출 시 파일명만 출력하고 실패 |
+| `scripts/check-syntax.sh` | — | bash·zsh 파일별 문법 검사와 Python 컴파일 검사 |
+| `.github/workflows/check.yml` | — | PR·main push에서 식별자·문법 검사 실행 |
 | `scripts/check-agents-yaml.sh` | — | `AGENTS.yaml` 검증기(구조·따옴표 없는 날짜·그래프·경로). agents-yaml 스킬 원본을 수정 없이 복사. python3 + PyYAML 필요 |
 
 홈에 생기는 부산물: `~/.config/dotfiles/backup/`(원본 기록과 설치 manifest), 배치 대상 옆의 `*.bak`(1세대), 폰트 디렉터리의 `.nerd-font-<name>-installed` 마커와 `.nerd-font-<name>-files.txt` manifest.
@@ -97,16 +100,14 @@
 
 ## 검증
 
-테스트 스위트가 없으므로 아래를 직접 돌린다.
+PR·main push에서는 식별자·문법 검사를 자동 실행한다. push 전에는 `git add` 후 `git diff --cached`를 직접 검토하고 아래 두 검사 스크립트를 실행한다. 식별자 검사는 Git 인덱스를 대상으로 하며 모든 시크릿을 탐지하지는 않는다. 동작에 관한 검증은 변경 범위에 맞춰 아래에서 선택한다.
 
 ```bash
-# 문법
-bash -n install.sh uninstall.sh scripts/check-agents-yaml.sh claude/statusline-command.sh agy/statusline-command.sh scripts/test-agy-statusline.sh scripts/test-codex-status-line.sh scripts/test-codex-cost-hook.sh scripts/test-windows-paths.sh scripts/test-windows-git.sh gitbash/bashrc gitbash/bash_profile
-python3 -m py_compile codex/status-line.py codex/cost-hook.py codex/hooks.py agy/settings.py
+# 문법 — bash·zsh는 파일마다 검사, Python은 컴파일 검사
+scripts/check-syntax.sh
 
 # 글리프 — v3 전용 5자리 코드가 없어야 한다 (결과 [])
 python3 -c "import sys;print([hex(ord(c)) for f in sys.argv[1:] for c in open(f,encoding='utf-8').read() if ord(c)>=0xF0000])" starship/starship.toml eza/theme.yml
-zsh -n zsh/zshrc.macos zsh/zshrc.linux zsh/zshrc.local.example
 
 # 실제 홈에 영향 없이 설치/제거 왕복 (패키지는 이미 설치된 머신 기준)
 T="$(mktemp -d)"
@@ -136,8 +137,8 @@ podman run --rm -v "$PWD":/src:ro docker.io/library/ubuntu:24.04 bash -c \
 # AGENTS.yaml — 구조·타입·그래프·경로 검증 (PyYAML 필요)
 scripts/check-agents-yaml.sh
 
-# 공개 전 식별자 검사 — 결과가 없어야 한다
-git grep -nIE '([0-9]{1,3}\.){3}[0-9]{1,3}|/Users/[a-z0-9]+|/home/[a-z0-9]+|glpat-|ghp_|BEGIN [A-Z ]*PRIVATE KEY' -- ':!AGENTS.md' ':!AGENTS.yaml'
+# 공개 전 식별자 검사 — git add 후 실행, 검출·실행 오류는 실패
+scripts/check-identifiers.sh
 ```
 
 `HOME` 을 바꾼 왕복 시험은 Nerd Font 를 실제로 내려받는다(수십 MB). 폰트와 무관한 변경이면 임시 홈의 폰트 디렉터리에 `.nerd-font-JetBrainsMono-installed`, `.nerd-font-D2Coding-installed` 마커를 미리 만들어 건너뛸 수 있다.
