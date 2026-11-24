@@ -45,6 +45,8 @@
 | `windows/uninstall-git.ps1` | — | `install-git.ps1` 의 역연산. `-Purge`(설치 기록이 있는 Git 까지), `-KeepBackup` |
 | `windows/*.cmd` | — | cmd 에서 같은 이름의 `.ps1` 을 `-ExecutionPolicy Bypass` 로 실행하는 래퍼 |
 | `scripts/test-windows-git.sh` | — | `windows/`·`gitbash/` 정적 시험. 인코딩(BOM·ASCII)·줄바꿈·bash 문법·pwsh 구문 분석(있을 때) |
+| `yolo/wrapper.sh` | `~/.local/share/dotfiles/bin/claude`·`agy` (PATH 에 있는 명령만) | `--yolo` → `--dangerously-skip-permissions` 로 바꿔 실제 CLI 를 `exec`. 파일 이름이 대상 명령이다. PATH 에서 자기 디렉터리 뒤의 실제 파일을 찾고 같은 내용의 사본·cmux shim 은 건너뛴다. 두 zshrc 가 디렉터리를 PATH 맨 앞에 둔다. 스크립트 앞부분에 대상 명령 이름을 소문자로 적지 않는다(cmux 가 재진입 shim 으로 분류) |
+| `scripts/test-yolo-wrapper.sh` | — | 가짜 CLI·가짜 cmux shim 으로 치환·인자 보존·비대화형 셸·루프 없음·실제 파일 없음(127), `gitbash/bashrc` 함수의 `export -f` |
 | `.gitattributes` | — | 기본 LF, `.ps1`/`.cmd` 는 CRLF 그대로(`-text`) |
 | `scripts/test-install-safety.sh` | — | 임시 HOME·모의 apt/dnf/sudo로 반복 제거, 미설치 파일 보존, Claude 사전 검사, 패키지별 기록·purge, sudo 불가·패키지 실패 시 플러그인 tarball 폴백 검증 |
 | `scripts/test-codex-status-line.sh` | — | `status-line.py` 의 임시 `HOME` 왕복 시험. `status_line` 순서까지 검증 |
@@ -54,7 +56,7 @@
 | `AGENTS.yaml` | — | 기계 판독용 사실(구성요소 그래프·명령·정책 요약·함정). 이 문서와 함께 갱신한다 |
 | `scripts/check-identifiers.sh` | — | Git 인덱스의 식별자 패턴 검사. 검출 시 파일명만 출력하고 실패 |
 | `scripts/check-syntax.sh` | — | bash·zsh 파일별 문법 검사와 Python 컴파일 검사 |
-| `.github/workflows/check.yml` | — | PR·main push에서 식별자·문법 검사 실행 |
+| `.github/workflows/check.yml` | — | 원본 저장소 시절 CI 정의. 하위 디렉터리라 실행되지 않는다 — agents-scaffold `.github/workflows/test.yml` 의 `dotfiles` job 이 대신한다 |
 | `scripts/check-agents-yaml.sh` | — | `AGENTS.yaml` 검증기(구조·따옴표 없는 날짜·그래프·경로). agents-yaml 스킬 원본을 수정 없이 복사. python3 + PyYAML 필요 |
 
 홈에 생기는 부산물: `~/.config/dotfiles/backup/`(원본 기록과 설치 manifest), 배치 대상 옆의 `*.bak`(1세대), Linux 에서 sudo 없이 받은 `~/.local/share/zsh/plugins/<name>`, 폰트 디렉터리의 `.nerd-font-<name>-installed` 마커와 `.nerd-font-<name>-files.txt` manifest.
@@ -132,6 +134,9 @@ scripts/test-agy-statusline.sh
 
 # 폐쇄망 Windows 스크립트 — 인코딩·줄바꿈·bash 문법, pwsh 가 PATH 에 있으면 .ps1 구문 분석까지. 실제 설치는 Windows 에서만 확인할 수 있다
 scripts/test-windows-git.sh
+
+# yolo 래퍼 — 가짜 CLI·가짜 cmux shim 으로 치환·인자 보존·비대화형 셸·루프 없음·실제 파일 없음(127), Git Bash 함수
+scripts/test-yolo-wrapper.sh
 
 # Windows 경로 — Git Bash 거부는 어느 OS 에서나, WSL 흉내 왕복은 Linux 에서만 돈다 (macOS 에서는 컨테이너로)
 scripts/test-windows-paths.sh

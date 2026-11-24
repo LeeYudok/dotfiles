@@ -5,3 +5,6 @@
 *.cmd -text
 *.ps1 -text
 *.exe binary
+*.ps1 text eol=crlf
+*.cmd text eol=crlf
+*.bat text eol=crlf

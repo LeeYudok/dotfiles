@@ -1,4 +1,4 @@
-# PR과 main push에서 로컬과 같은 최소 검사를 실행한다.
+# PR과 main push에서 식별자·문법·AGENTS.yaml·밀폐형 시험을 실행한다.
 name: 기본 검사
 
 on:
@@ -11,17 +11,36 @@ permissions:
 
 jobs:
   checks:
-    name: 식별자·문법 검사
+    name: 식별자·문법·밀폐형 시험
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@v6
         with:
           persist-credentials: false
       - name: 식별자 검사
         run: scripts/check-identifiers.sh
       - name: 문법 검사 도구 설치
+        env:
+          HOMEBREW_NO_AUTO_UPDATE: '1'
+          HOMEBREW_NO_INSTALL_CLEANUP: '1'
+          HOMEBREW_NO_ENV_HINTS: '1'
         run: |
-          sudo apt-get update -qq
-          sudo apt-get install -y zsh python3
+          command -v python3 jq
+          if ! command -v zsh >/dev/null; then
+            brew=/home/linuxbrew/.linuxbrew/bin/brew
+            "$brew" install zsh
+            mkdir -p "$RUNNER_TEMP/bin"
+            ln -sf "$("$brew" --prefix)/bin/zsh" "$RUNNER_TEMP/bin/zsh"
+            echo "$RUNNER_TEMP/bin" >> "$GITHUB_PATH"
+          fi
+          "$(command -v zsh || echo "$RUNNER_TEMP/bin/zsh")" --version
       - name: 파일별 문법 검사
         run: scripts/check-syntax.sh
+      - name: AGENTS.yaml 검증
+        run: scripts/check-agents-yaml.sh
+      - name: 밀폐형 시험
+        run: |
+          for t in test-agy-statusline test-codex-cost-hook test-codex-status-line test-install-safety test-windows-git test-yolo-wrapper; do
+            echo "== $t"; bash "scripts/$t.sh"
+          done
