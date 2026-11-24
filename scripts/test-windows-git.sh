@@ -16,7 +16,7 @@ for f in windows/*.cmd; do
   LC_ALL=C grep -q '[^[:print:][:space:]]' "$f" && bad "$f: ASCII 외 문자"
 done
 for f in windows/*.ps1 windows/*.cmd; do
-  [ "$(grep -c $'\r$' "$f")" = "$(wc -l < "$f")" ] || bad "$f: CRLF 가 아닌 줄이 있음"
+  [ "$(grep -c $'\r$' "$f")" = "$(wc -l < "$f" | tr -d ' ')" ] || bad "$f: CRLF 가 아닌 줄이 있음"
 done
 for f in gitbash/*; do
   grep -q $'\r' "$f" && bad "$f: CR 포함 (LF 여야 함)"
