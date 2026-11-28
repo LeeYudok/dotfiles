@@ -106,7 +106,8 @@ elif name in ('curl', 'unzip'):
                 continue
             (self.bin / name).symlink_to(dispatcher)
         self.env = dict(os.environ, HOME=str(self.home), PATH=str(self.bin),
-                        DOTFILES_PROC_VERSION=str(base / 'proc-version'))
+                        DOTFILES_PROC_VERSION=str(base / 'proc-version'),
+                        DOTFILES_SKIP_SKILLS='1')
 
     def run(self, script, *args, ok=True):
         p = subprocess.run([str(self.bin / 'bash'), str(ROOT / script), *args],

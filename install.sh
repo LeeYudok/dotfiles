@@ -2,7 +2,7 @@
 # dotfiles install — zsh + starship 표준 셸 환경 부트스트랩
 #
 # 사용법:
-#   git clone https://github.com/LeeYudok/agents-scaffold.git && cd agents-scaffold/dotfiles && ./install.sh
+#   git clone https://github.com/LeeYudok/dotfiles.git && cd dotfiles && ./install.sh
 #
 # 동작 (섹션 번호 = 아래 주석 번호 = README 단계 표):
 #   0.   의존성·설정 사전 검사 — 누락·잘못된 설정은 홈 변경 전에 종료. Claude JSON은 객체만 허용. Git Bash/MSYS/Cygwin 미지원
@@ -23,6 +23,10 @@
 #        Codex 를 쓰는 머신(codex 명령 또는 ~/.codex 존재)에서만. 없으면 건너뜀
 #   6.   Antigravity CLI(agy) statusline 스크립트 배치 (~/.gemini/antigravity-cli/statusline-command.sh)
 #        + settings.json 의 statusLine 키만 merge (agy/settings.py). agy 명령 또는 ~/.gemini/antigravity-cli 가 있을 때만
+#   6.5. 에이전트 스킬 — LeeYudok/skills 를 ~/.local/share/skills 에 clone(있으면 pull --ff-only) 후
+#        scripts/install-skills.sh --with-agent 실행. Claude Code·Codex·agy·Pi·Hermes·OpenCode 가 같은 스킬을 읽는다
+#        DOTFILES_SKILLS_DIR(위치) · DOTFILES_SKILLS_PERSONAL=1(--personal) · DOTFILES_SKIP_SKILLS=1(건너뜀)
+#        실패해도 나머지 설치는 계속한다. git 이 없으면 건너뜀
 #   7.   기본 셸이 zsh 가 아니면 chsh 안내
 #
 # 런타임 의존성: curl, unzip, python3 (0 단계에서 검사). macOS는 Homebrew, Linux는 rpm 또는 dpkg-query도 필요.
@@ -37,6 +41,7 @@
 #   - codex-config.toml.orig : ~/.codex/config.toml 설치 전 전체 내용 (없었으면 codex-config.toml.absent)
 #   - codex-hooks.json.absent / .present : ~/.codex/hooks.json 설치 전 유무 (다른 도구와 공유하는 파일이라 내용은 기록하지 않음)
 #   - agy-settings.json.orig : ~/.gemini/antigravity-cli/settings.json 설치 전 전체 내용 (없었으면 agy-settings.json.absent)
+#   - skills-cloned.txt : 6.5 단계가 새로 clone 한 skills 폴더 (uninstall 이 이 폴더만 지운다)
 
 set -euo pipefail
 cd "$(dirname "$0")"
@@ -386,6 +391,40 @@ if command -v agy >/dev/null || [ -d "$HOME/.gemini/antigravity-cli" ]; then
   python3 agy/settings.py apply
   command -v jq >/dev/null || info "경고: Antigravity statusline 스크립트는 jq 필요 — 설치 권장 (brew/dnf/apt install jq)"
   info "Antigravity CLI statusline 배치 완료"
+fi
+
+# ── 6.5. 에이전트 스킬 (LeeYudok/skills) ───────────────────
+# 스킬 원본은 별도 리포다. 받아서 그 리포의 설치 스크립트로 각 런타임 스킬 경로에 심링크를 건다.
+# 이미 다른 곳(예: agents-scaffold 사본)을 가리키는 링크가 있으면 install-skills.sh 가 덮어쓰지 않고
+# conflict 로 알린다 — 그때는 안내대로 --force 로 다시 돌린다.
+SKILLS_URL="https://github.com/LeeYudok/skills.git"
+SKILLS_DIR="${DOTFILES_SKILLS_DIR:-$HOME/.local/share/skills}"
+if [ "${DOTFILES_SKIP_SKILLS:-0}" = 1 ]; then
+  info "에이전트 스킬 건너뜀 (DOTFILES_SKIP_SKILLS=1)"
+elif ! command -v git >/dev/null; then
+  info "경고: git 이 없어 에이전트 스킬 설치를 건너뜀"
+else
+  skills_ok=1
+  if [ -d "$SKILLS_DIR/.git" ]; then
+    git -C "$SKILLS_DIR" pull -q --ff-only || { info "경고: $SKILLS_DIR pull 실패 — 로컬 변경을 확인할 것"; }
+  elif [ -e "$SKILLS_DIR" ]; then
+    info "경고: $SKILLS_DIR 가 git 클론이 아니라 에이전트 스킬 설치를 건너뜀"
+    skills_ok=0
+  elif git clone -q --depth 1 "$SKILLS_URL" "$SKILLS_DIR"; then
+    echo "$SKILLS_DIR" >> "$BACKUP_DIR/skills-cloned.txt"
+  else
+    info "경고: $SKILLS_URL clone 실패 — 네트워크 확인 후 다시 실행"
+    skills_ok=0
+  fi
+  if [ "$skills_ok" = 1 ]; then
+    skills_args=(--with-agent)
+    [ "${DOTFILES_SKILLS_PERSONAL:-0}" = 1 ] && skills_args=(--personal --with-agent)
+    if "$SKILLS_DIR/scripts/install-skills.sh" "${skills_args[@]}" >/dev/null; then
+      info "에이전트 스킬 설치 완료 ($SKILLS_DIR)"
+    else
+      info "경고: 에이전트 스킬 설치에 충돌·실패가 있다 — '$SKILLS_DIR/scripts/install-skills.sh ${skills_args[*]}' 로 확인 (기존 링크 교체는 --force)"
+    fi
+  fi
 fi
 
 # ── 7. 기본 셸 ─────────────────────────────────────────────

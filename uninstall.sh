@@ -132,6 +132,19 @@ if [ -e "$BACKUP_DIR/agy-statusline-command.sh.orig" ] || [ -e "$BACKUP_DIR/agy-
   restore_file "$HOME/.gemini/antigravity-cli/statusline-command.sh" agy-statusline-command.sh
 fi
 
+# ── 3.7. 에이전트 스킬 링크 제거 + install.sh 가 clone 한 skills 폴더만 삭제 ──
+SKILLS_DIR="${DOTFILES_SKILLS_DIR:-$HOME/.local/share/skills}"
+if [ "${DOTFILES_SKIP_SKILLS:-0}" != 1 ] && [ -x "$SKILLS_DIR/scripts/install-skills.sh" ]; then
+  "$SKILLS_DIR/scripts/install-skills.sh" --personal --with-agent --uninstall >/dev/null \
+    || info "경고: 에이전트 스킬 링크 일부를 걷지 못했다 — '$SKILLS_DIR/scripts/install-skills.sh --uninstall' 로 확인"
+  if [ -f "$BACKUP_DIR/skills-cloned.txt" ] && grep -qxF "$SKILLS_DIR" "$BACKUP_DIR/skills-cloned.txt"; then
+    rm -rf "$SKILLS_DIR"
+    info "skills 클론 제거: $SKILLS_DIR"
+  else
+    info "skills 폴더 유지: $SKILLS_DIR (install.sh 가 만든 것이 아님)"
+  fi
+fi
+
 # ── 4. Nerd Fonts 제거 (manifest 에 기록된 파일만) ───────────
 if [ "$OS" = "Darwin" ]; then FONT_DIR="$HOME/Library/Fonts"; else FONT_DIR="$HOME/.local/share/fonts"; fi
 for name in JetBrainsMono D2Coding; do
