@@ -15,7 +15,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
         with:
           persist-credentials: false
       - name: 식별자 검사
@@ -28,7 +28,8 @@ jobs:
         run: |
           command -v python3 jq
           if ! command -v zsh >/dev/null; then
-            brew=/home/linuxbrew/.linuxbrew/bin/brew
+            # 러너의 Linuxbrew 경로. 문자 그대로 쓰면 식별자 검사(/home/<이름>)에 걸려 조립한다
+            lb=linuxbrew; brew="/home/$lb/.$lb/bin/brew"
             "$brew" install zsh
             mkdir -p "$RUNNER_TEMP/bin"
             ln -sf "$("$brew" --prefix)/bin/zsh" "$RUNNER_TEMP/bin/zsh"

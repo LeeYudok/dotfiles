@@ -1,6 +1,6 @@
 # dotfiles
 
-> 2026-10-24 부터 원본(SSOT)은 [LeeYudok/agents-scaffold](https://github.com/LeeYudok/agents-scaffold) 의 `dotfiles/` 다(#76). 옛 `LeeYudok/dotfiles` 저장소는 보관용이며 더 고치지 않는다. 이슈·PR 은 agents-scaffold 에 올린다.
+> 원본(SSOT)은 이 저장소다. 2026-10-24 ~ 11-25 동안 agents-scaffold 의 `dotfiles/` 에 두었다가 되돌렸다(agents-scaffold #171, 이 저장소 #45). 에이전트 스킬은 [LeeYudok/skills](https://github.com/LeeYudok/skills) 가 원본이고 `install.sh` 6.5 단계가 받아 설치한다(#47).
 
 zsh + starship 셸 환경과 Claude Code·Antigravity CLI statusline, Codex CLI status line 을 새 머신에 한 번에 맞추는 부트스트랩 저장소. macOS(Homebrew)와 Linux(dnf/apt), Windows(WSL2) 를 같은 `install.sh` 로 설치하고, `uninstall.sh` 로 설치 전 상태까지 되돌린다. Android 는 Termux 에 Debian 을 올려 같은 `install.sh` 를 쓴다 — [Android (Termux + proot-distro)](#android-termux--proot-distro). WSL2 를 쓸 수 없는 폐쇄망 Windows 는 `windows/install-git.cmd` 로 Git 을 오프라인 설치하고 Git Bash 환경을 맞춘다 — [Windows 폐쇄망 (Git Bash)](#windows-폐쇄망-git-bash).
 
@@ -17,7 +17,7 @@ dotfiles/
 ├── .gitignore                 # 머신별·시크릿 파일명, 반입용 설치 파일(windows/offline/) 차단
 ├── .gitattributes             # 줄바꿈 고정 — 기본 LF, .ps1/.cmd 는 CRLF 그대로
 ├── .github/
-│   └── workflows/check.yml    # 원본 저장소 시절의 CI 정의 — 지금은 agents-scaffold 의 .github/workflows/test.yml dotfiles job 이 같은 검사를 돌린다
+│   └── workflows/check.yml    # CI — 식별자·문법·AGENTS.yaml·밀폐형 시험
 ├── starship/
 │   └── starship.toml          # Catppuccin Mocha 팔레트 2줄 프롬프트, Nerd Font 글리프 (OS 공통)
 ├── eza/
@@ -62,8 +62,8 @@ dotfiles/
 ## 설치
 
 ```bash
-git clone https://github.com/LeeYudok/agents-scaffold.git
-cd agents-scaffold/dotfiles && ./install.sh
+git clone https://github.com/LeeYudok/dotfiles.git
+cd dotfiles && ./install.sh
 ```
 
 `install.sh` 동작 (스크립트 내 섹션 번호와 동일):
@@ -79,6 +79,7 @@ cd agents-scaffold/dotfiles && ./install.sh
 | 4 | Claude statusline | `claude/statusline-command.sh` → `~/.claude/statusline-command.sh` (+x). 스크립트 런타임에 `jq` 필요 — 없으면 경고만. 이어서 **python3** 로 `~/.claude/settings.json` 의 `statusLine` 키만 merge (다른 키 불변, 파일 없으면 생성). 같은 디렉터리의 임시 파일에 쓰고 `os.replace` 로 교체하므로 중단돼도 원본이 깨지지 않고, 기존 파일 mode 를 보존한다. |
 | 5 | Codex status line | Codex 를 쓰는 머신(`codex` 명령 또는 `~/.codex` 존재)에서만. `codex/status-line.py apply` 로 `~/.codex/config.toml` 의 `[tui]` `status_line` 키만 merge (다른 테이블·키·주석 불변, 파일 없으면 생성). 비용 훅 `codex/cost-hook.py` 를 `~/.codex/cost-hook.py` 로 배치하고 `codex/hooks.py apply` 로 `~/.codex/hooks.json` 의 `Stop` 에 그 항목 하나만 추가한다(다른 훅 불변). 원자적 쓰기와 mode 보존은 4 단계와 같다. `hooks.json` 이 깨진 JSON 이면 0 단계에서 중단. |
 | 6 | Antigravity statusline | Antigravity CLI 를 쓰는 머신(`agy` 명령 또는 `~/.gemini/antigravity-cli` 존재)에서만. `agy/statusline-command.sh` → `~/.gemini/antigravity-cli/statusline-command.sh` (+x) 배치 후 `agy/settings.py apply` 로 `settings.json` 의 `statusLine` 키만 merge (다른 키 불변, 사용자가 둔 `padding`·`stack_with_default` 도 유지). 원자적 쓰기와 mode 보존은 4 단계와 같다. |
+| 6.5 | 에이전트 스킬 | [LeeYudok/skills](https://github.com/LeeYudok/skills) 를 `~/.local/share/skills`(`DOTFILES_SKILLS_DIR`)에 clone 하거나 `pull --ff-only` 한 뒤 `scripts/install-skills.sh --with-agent` 실행. Claude Code·Codex·Antigravity·Pi·Hermes·OpenCode 가 같은 스킬을 읽는다. `DOTFILES_SKILLS_PERSONAL=1` 이면 `--personal`, `DOTFILES_SKIP_SKILLS=1` 이면 건너뜀. 기존 링크가 다른 곳을 가리키면 덮어쓰지 않고 경고만 한다(교체는 `--force`). 실패해도 나머지 설치는 계속한다. `uninstall.sh` 는 링크를 걷고 이 단계가 clone 한 폴더만 지운다. |
 | 7 | 기본 셸 | `$SHELL` 이 zsh 가 아니면 `chsh -s <zsh 경로>` 안내만 (자동 변경 안 함). |
 
 런타임 의존성: `curl`, `unzip`, `python3`(0 단계에서 검사). macOS 는 Homebrew, Linux 는 패키지 조회용 `rpm` 또는 `dpkg-query`도 필요하다. Windows 는 WSL2 안에서 실행한다. `jq` 는 statusline 스크립트(Claude·Antigravity) 런타임 전용이라 1 단계에서 자동 설치한다(Linux 는 sudo 가능할 때만).
@@ -102,8 +103,8 @@ wsl --install            # PowerShell(관리자). 기본 배포판 Ubuntu 설치
 ```bash
 # WSL 셸 안에서
 sudo apt-get update && sudo apt-get install -y git curl unzip python3
-git clone https://github.com/LeeYudok/agents-scaffold.git
-cd agents-scaffold/dotfiles && ./install.sh
+git clone https://github.com/LeeYudok/dotfiles.git
+cd dotfiles && ./install.sh
 chsh -s "$(command -v zsh)"
 ```
 
@@ -126,8 +127,8 @@ proot-distro login debian
 
 # Debian 안에서 — install.sh 가 sudo 로 패키지를 설치하므로 sudo 도 넣는다
 apt-get update && apt-get install -y sudo git curl unzip python3
-git clone https://github.com/LeeYudok/agents-scaffold.git
-cd agents-scaffold/dotfiles && ./install.sh
+git clone https://github.com/LeeYudok/dotfiles.git
+cd dotfiles && ./install.sh
 ```
 
 이후 과정은 일반 Linux(apt) 와 같다. 다만 2.5 단계가 설치하는 `~/.local/share/fonts` 는 proot 안쪽 폰트 디렉터리라 **화면에는 반영되지 않는다.** 글리프를 그리는 것은 Termux 앱이고, Termux 는 자기 홈의 `~/.termux/font.ttf` 한 파일만 읽는다. 이 파일이 없으면 Android 기본 폰트로 그려 프롬프트·statusline 아이콘이 네모로 깨진다.
@@ -154,7 +155,7 @@ cp ~/.local/share/fonts/D2KodingLigatureNerdFontMono-Regular.ttf "$T/font.ttf"
 
 인터넷이 되는 PC 에서 둘을 받아 USB 등으로 옮긴다.
 
-1. 이 저장소 — [agents-scaffold](https://github.com/LeeYudok/agents-scaffold) 의 Code → Download ZIP (폐쇄망 PC 에는 아직 git 이 없다). 압축을 풀면 `agents-scaffold-main\dotfiles` 가 이 디렉터리다. agents-scaffold 의 오프라인 번들(`scripts/make-offline-bundle.sh`)에도 이 디렉터리가 들어 있다.
+1. 이 저장소 — [dotfiles](https://github.com/LeeYudok/dotfiles) 의 Code → Download ZIP (폐쇄망 PC 에는 아직 git 이 없다). 압축을 풀면 `dotfiles-main` 이 이 디렉터리다.
 2. Git for Windows 64비트 설치 파일 하나 — [git-scm.com/downloads/win](https://git-scm.com/downloads/win) 또는 [릴리스 페이지](https://github.com/git-for-windows/git/releases/latest).
    - `Git-<버전>-64-bit.exe` (설치형, 권장) — 시작 메뉴·탐색기 "Git Bash Here"·앱 제거 목록까지 갖춰진다.
    - `PortableGit-<버전>-64-bit.7z.exe` (포터블) — 압축만 풀므로 소프트웨어 설치가 막힌 PC 에서 쓴다.
@@ -357,7 +358,7 @@ API 환산 $1.23 · 이번 턴 +$0.04 · 입력 1.4M(캐시 90%) · 출력 11.3k
 
 ## 갱신 규칙
 
-PR·`main` push에서 식별자·문법 검사를 자동 실행한다. push 전에는 `git add` 후 `git diff --cached`를 검토하고 `scripts/check-identifiers.sh`와 `scripts/check-syntax.sh`를 실행한다(Git·bash·zsh·python3 필요). CI 는 agents-scaffold 루트의 `.github/workflows/test.yml` `dotfiles` job 이 같은 두 검사와 밀폐형 시험(`test-windows-paths.sh` 제외 — 실제 패키지·네트워크 설치)을 돌린다. 하위 디렉터리의 `.github/workflows/check.yml` 은 GitHub 가 실행하지 않는다. `AGENTS.yaml` 을 고쳤으면 `scripts/check-agents-yaml.sh`(PyYAML 필요)로 검증한다. 식별자 검사는 스테이징된 파일의 정해진 패턴만 확인하므로 직접 검토도 필요하다.
+PR·`main` push에서 식별자·문법 검사를 자동 실행한다. push 전에는 `git add` 후 `git diff --cached`를 검토하고 `scripts/check-identifiers.sh`와 `scripts/check-syntax.sh`를 실행한다(Git·bash·zsh·python3 필요). CI 는 이 저장소의 `.github/workflows/check.yml` 이 같은 두 검사와 `AGENTS.yaml` 검증, 밀폐형 시험(`test-windows-paths.sh` 제외 — 실제 패키지·네트워크 설치)을 돌린다. `AGENTS.yaml` 을 고쳤으면 `scripts/check-agents-yaml.sh`(PyYAML 필요)로 검증한다. 식별자 검사는 스테이징된 파일의 정해진 패턴만 확인하므로 직접 검토도 필요하다.
 
 - 로컬에서 `~/.zshrc` / `~/.config/starship.toml` / `~/.claude/statusline-command.sh` / `~/.gemini/antigravity-cli/statusline-command.sh` / `~/.codex/cost-hook.py` / (Git Bash) `~/.bashrc` 를 바꾸면 이 저장소에도 반영해 커밋한다.
 - 머신별 일회성 설정(특정 호스트 alias 등)은 `~/.zshrc.local` 에 두고 저장소 zshrc 에는 넣지 않는다. 공통화 가능한 것만 양쪽 zshrc 에 반영.
